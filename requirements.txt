@@ -1,0 +1,9 @@
+numpy
+pandas
+scikit-learn
+torch
+psutil
+torchvision
+tqdm
+joblib
+pyarrow
