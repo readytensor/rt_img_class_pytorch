@@ -76,7 +76,7 @@ class ImageClassifier:
         self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
 
-        model = resnet18(weights=ResNet18_Weights)
+        model = resnet18(weights=ResNet18_Weights, pretrained=True)
         in_features = model.fc.in_features
         model.fc = Linear(in_features, num_classes)
         self.model = model
