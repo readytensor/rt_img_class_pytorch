@@ -161,10 +161,7 @@ class ImageClassifier:
                     else probs.cpu().numpy()
                 )
 
-        return all_labels, all_predicted, all_probs
-
-    def summary(self):
-        self.model.summary()
+        return all_predicted, all_probs
 
     def evaluate(self, test_data: DataLoader):
         """Evaluate the model and return the loss and metrics"""
@@ -273,7 +270,7 @@ def predict_with_model(
     Returns:
         Tuple[np.ndarray, np.ndarray]: (predicted class labels, predicted class probabilites).
     """
-    _, labels, probabilites = model.predict(test_data)
+    labels, probabilites = model.predict(test_data)
     return labels, probabilites
 
 
