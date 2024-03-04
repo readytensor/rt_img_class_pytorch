@@ -97,6 +97,7 @@ class ImageClassifier:
             self.optimizer.step()
 
     def fit(self, train_data: DataLoader, valid_data: DataLoader = None):
+        self.model.to(device)
         self.model.train()
         total_batches = len(train_data)
         early_stopper = EarlyStopping(
