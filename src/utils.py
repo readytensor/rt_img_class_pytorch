@@ -187,7 +187,7 @@ def save_dataframe_as_csv(dataframe: pd.DataFrame, file_path: str) -> None:
     - IOError: If an error occurs while saving the CSV file.
     """
     try:
-        dataframe.to_csv(file_path, index=False, float_format="%.4f")
+        dataframe.to_csv(file_path, index=False, float_format="%.8f")
     except IOError as exc:
         raise IOError(f"Error saving CSV file: {exc}") from exc
 
