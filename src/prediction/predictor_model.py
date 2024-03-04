@@ -46,7 +46,7 @@ def get_optimizer(optimizer: str) -> Optimizer:
 
 
 class ImageClassifier:
-    """CNN Timeseries Forecaster.
+    """ResNet18 Image Classifier.
 
     This class provides a consistent interface that can be used with other
     Forecaster models.
@@ -91,7 +91,6 @@ class ImageClassifier:
             if isinstance(outputs, tuple):
                 outputs = outputs[0]
 
-            # _, predicted = torch.max(outputs.data, 1)
             loss = self.loss_function(outputs, labels)
             loss.backward()
             self.optimizer.step()
@@ -129,10 +128,10 @@ class ImageClassifier:
 
     def predict(self, data: DataLoader) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Predicts the class labels and logits for the data in a data loader.
+        Predicts the class labels and probabilities for the given data.
 
         Args:
-            data_loader (DataLoader): The input data.
+            data (DataLoader): The input data.
 
         Returns:
             Tuple[np.ndarray, np.ndarray, np.ndarray]: (Truth labels, Predicted class labels, Probabilities).
@@ -164,7 +163,7 @@ class ImageClassifier:
         return all_predicted, all_probs
 
     def evaluate(self, test_data: DataLoader):
-        """Evaluate the model and return the loss and metrics"""
+        """Evaluate the model and return the loss"""
         return get_loss(
             self.model, data_loader=test_data, loss_function=self.loss_function
         )
@@ -173,13 +172,13 @@ class ImageClassifier:
         """
         Saves the model's state dictionary and training parameters to the specified path.
 
-        This method creates the directory if it doesn't exist and saves two files: one with
-        the model's parameters (such as data loaders, number of classes, model name, and
-        output folder) and another with the model's state dictionary. The parameters are
+        This method saves two files:
+        one with the model's parameters (such as learning rate, number of classes, etc.
+        and another with the model's state dictionary. The parameters are
         saved in a joblib file, and the model's state is saved in a PyTorch file.
 
         Args:
-        - predictor_path (str, optional): The directory path where the model parameters
+        - predictor_path (str): The directory path where the model parameters
           and state are to be saved.
         """
         model_params = {
@@ -236,15 +235,16 @@ def train_predictor_model(
     valid_data: DataLoader = None,
 ) -> ImageClassifier:
     """
-    Instantiate and train the forecaster model.
+    Instantiate and train the classifier model.
 
     Args:
-        history (np.ndarray): The training data inputs.
-        forecast_length (int): Length of forecast window.
-        hyperparameters (dict): Hyperparameters for the Forecaster.
+        train_data (DataLoader): The training data.
+        hyperparameters (dict): Hyperparameters for the model.
+        num_classes (int): Number of classes in the classificatiion problem.
+        valid_data (DataLoader): The validation data.
 
     Returns:
-        'Forecaster': The Forecaster model
+        'ImageClassifier': The ImageClassifier model
     """
     model = ImageClassifier(
         num_classes=num_classes,
@@ -276,7 +276,7 @@ def predict_with_model(
 
 def save_predictor_model(model: ImageClassifier, predictor_dir_path: str) -> None:
     """
-    Save the Forecaster model to disk.
+    Save the ImageClassifier model to disk.
 
     Args:
         model (ImageClassifier): The Classifier model to save.
@@ -289,20 +289,20 @@ def save_predictor_model(model: ImageClassifier, predictor_dir_path: str) -> Non
 
 def load_predictor_model(predictor_dir_path: str) -> ImageClassifier:
     """
-    Load the Forecaster model from disk.
+    Load the ImageClassifier model from disk.
 
     Args:
         predictor_dir_path (str): Dir path where model is saved.
 
     Returns:
-        Forecaster: A new instance of the loaded Forecaster model.
+        ImageClassifier: A new instance of the loaded ImageClassifier model.
     """
     return ImageClassifier.load(predictor_dir_path)
 
 
 def evaluate_predictor_model(model: ImageClassifier, test_data: DataLoader) -> float:
     """
-    Evaluate the Forecaster model and return the accuracy.
+    Evaluate the ImageClassifier model and return the loss.
 
     Args:
         model (ImageClassifier): The Classifier model.

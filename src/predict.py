@@ -16,6 +16,21 @@ logger = get_logger(task_name="predict")
 def create_predictions_dataframe(
     ids: np.ndarray, probs: np.ndarray, predictions: np.ndarray, class_to_idx: dict
 ) -> pd.DataFrame:
+    """
+    Creates a DataFrame containing predictions and their associated probabilities for each class.
+
+    Args:
+    - ids (np.ndarray): An array of identifiers for the samples.
+    - probs (np.ndarray): A 2D array where each row contains the probabilities for each class for a given sample.
+    - predictions (np.ndarray): An array of class indices predicted for each sample.
+    - class_to_idx (dict): A dictionary mapping class names to their respective indices.
+
+    Returns:
+    - pd.DataFrame: A DataFrame with the following columns:
+        - 'id': The identifier for each sample.
+        - One column for each class, containing the probability of that class for each sample. The columns are named after the class names.
+        - 'prediction': The predicted class name for each sample.
+    """
     idx_to_class = {k: v for v, k in class_to_idx.items()}
     encoded_targets = list(range(len(class_to_idx)))
     prediction_df = pd.DataFrame({"id": ids})
@@ -35,20 +50,11 @@ def run_batch_predictions(
     """
     Run batch predictions on test data, save the predicted probabilities to a CSV file.
 
-    This function reads test data from the specified directory,
-    loads the preprocessing pipeline and pre-trained predictor model,
-    transforms the test data using the pipeline,
-    makes predictions using the trained predictor model,
-    adds ids into the predictions dataframe,
-    and saves the predictions as a CSV file.
-
     Args:
-        saved_schema_dir_path (str): Dir path to the saved data schema.
-        model_config_file_path (str): Path to the model configuration file.
         test_dir_path (str): Directory path for the test data.
-        preprocessing_dir_path (str): Path to the saved pipeline file.
-        predictor_file_path (str): Path to the saved predictor model file.
+        predictor_dir_path (str): Path to the directory of saved model.
         predictions_file_path (str): Path where the predictions file will be saved.
+        data_loader_file_path (str): Path to the saved data loader file.
     """
 
     try:

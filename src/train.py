@@ -34,15 +34,13 @@ def run_training(
     Run the training process and saves model artifacts
 
     Args:
-        input_schema_dir (str, optional): The directory path of the input schema.
-        saved_schema_dir_path (str, optional): The path where to save the schema.
-        model_config_file_path (str, optional): The path of the model
-            configuration file.
-        train_dir (str, optional): The directory path of the train data.
-        predictor_dir_path (str, optional): Dir path where to save the
-            predictor model.
-        default_hyperparameters_file_path (str, optional): The path of the default
-            hyperparameters file.
+        model_config_file_path (str, optional): The path of the model configuration file.
+        train_dir_path (str, optional): The directory path of the train data.
+        valid_dir_path (str, optional): The directory path of the validation data.
+        preprocessing_config_file_path (str, optional): The path of the preprocessing config file.
+        predictor_dir_path (str, optional): The directory path where to save the predictor model.
+        default_hyperparameters_file_path (str, optional): The path of the default hyperparameters file.
+        data_loader_save_path (str, optional): The directory path to where the data loader be save.
     Returns:
         None
     """
