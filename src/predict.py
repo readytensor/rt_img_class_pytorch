@@ -6,7 +6,6 @@ from logger import get_logger, log_error
 from prediction.predictor_model import load_predictor_model, predict_with_model
 from torch_utils.data_loader import CustomDataLoader
 from utils import (
-    read_json_as_dict,
     save_dataframe_as_csv,
     ResourceTracker,
 )
@@ -57,12 +56,6 @@ def run_batch_predictions(
     try:
         with ResourceTracker(logger, monitoring_interval=5) as _:
             logger.info("Making batch predictions...")
-
-            logger.info("Loading model config...")
-            model_config = read_json_as_dict(model_config_file_path)
-
-            logger.info("Loading preprocessing config...")
-            preprocessing_config = read_json_as_dict(preprocessing_config_file_path)
 
             logger.info("Loading test data...")
             data_loader = CustomDataLoader.load(data_loader_file_path)
