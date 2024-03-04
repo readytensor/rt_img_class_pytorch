@@ -27,9 +27,7 @@ def create_predictions_dataframe(
 
 
 def run_batch_predictions(
-    model_config_file_path: str = paths.MODEL_CONFIG_FILE_PATH,
     test_dir_path: str = paths.TEST_DIR,
-    preprocessing_config_file_path: str = paths.PREPROCESSING_CONFIG_FILE_PATH,
     predictor_dir_path: str = paths.PREDICTOR_DIR_PATH,
     predictions_file_path: str = paths.PREDICTIONS_FILE_PATH,
     data_loader_file_path: str = paths.SAVED_DATA_LOADER_FILE_PATH,
