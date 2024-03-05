@@ -2,6 +2,7 @@ import os
 import joblib
 import numpy as np
 from pathlib import Path
+from typing import List, Tuple
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader, Subset
@@ -69,7 +70,7 @@ class CustomDataLoader:
     def create_test_data_loader(
         self,
         data_dir_path: str,
-    ):
+    ) -> Tuple[DataLoader, List]:
         dataset = ImageFolder(root=data_dir_path, transform=self.transform)
         data_loader = DataLoader(
             dataset,

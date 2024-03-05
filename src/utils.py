@@ -4,10 +4,12 @@ import random
 import time
 import psutil
 import threading
-from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import torch as T
+from torch.utils.data import DataLoader
+from torch_utils.data_loader import CustomDataLoader
+from typing import Any, Dict, List, Tuple, Union
 
 
 def read_json_as_dict(input_path: str) -> Dict:
@@ -255,7 +257,58 @@ def contains_subdirectories(directory):
     return False
 
 
-def get_peak_memory_usage():
+def read_test_data(
+    data_loader_file_path: str, test_dir_path: str
+) -> Tuple[CustomDataLoader, DataLoader, List]:
+    data_loader = CustomDataLoader.load(data_loader_file_path)
+    test_data, image_names = data_loader.create_test_data_loader(
+        data_dir_path=test_dir_path,
+    )
+    return data_loader, test_data, image_names
+
+
+def read_train_val_data(
+    train_dir_path: str,
+    valid_dir_path: str,
+    preprocessing_config: dict,
+    validation_exists: bool,
+    logger=print,
+) -> Tuple[CustomDataLoader, Union[DataLoader, None], int]:
+    data_loader = CustomDataLoader(**preprocessing_config)
+    if validation_exists:
+        logger("Validation data provided. Reading validation data...")
+        train_data = data_loader.create_data_loader(
+            data_dir_path=train_dir_path,
+            shuffle=True,
+        )
+        valid_data = data_loader.create_data_loader(
+            data_dir_path=valid_dir_path,
+            shuffle=False,
+        )
+
+    elif (
+        not validation_exists
+        and "validation_size" in preprocessing_config
+        and preprocessing_config["validation_size"] > 0
+    ):
+        logger("Creating validation data from training folder...")
+        train_data, valid_data = data_loader.create_data_loader(
+            data_dir_path=train_dir_path,
+            shuffle=True,
+            create_validation=True,
+            val_size=preprocessing_config["validation_size"],
+        )
+    else:
+        logger("No validation data used.")
+        train_data = data_loader.create_data_loader(
+            data_dir_path=train_dir_path,
+            shuffle=True,
+        )
+        valid_data = None
+    return data_loader, train_data, valid_data
+
+
+def get_peak_memory_usage() -> float:
     """
     Returns the peak memory usage by current cuda device (in MB) if available
     """

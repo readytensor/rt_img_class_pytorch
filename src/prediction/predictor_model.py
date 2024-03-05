@@ -62,7 +62,7 @@ def get_lr_scheduler(scheduler: str) -> _LRScheduler:
     }
     if scheduler not in supported_schedulers.keys():
         raise ValueError(
-            f"{scheduler} is not a supported optimizer. Supported: {supported_schedulers}"
+            f"{scheduler} is not a supported scheduler. Supported: {supported_schedulers}"
         )
     return supported_schedulers[scheduler]
 

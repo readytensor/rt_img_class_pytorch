@@ -5,12 +5,12 @@ from prediction.predictor_model import (
     save_predictor_model,
     train_predictor_model,
 )
-from torch_utils.data_loader import CustomDataLoader
 
 from utils import (
     read_json_as_dict,
     set_seeds,
     contains_subdirectories,
+    read_train_val_data,
     ResourceTracker,
 )
 
@@ -62,42 +62,20 @@ def run_training(
 
             # load train data and validation data if available
             logger.info("Loading train data...")
-            data_loader = CustomDataLoader(**preprocessing_config)
-            if validation_exists:
-                logger.info("Validation data provided. Reading validation data...")
-                train_data = data_loader.create_data_loader(
-                    data_dir_path=train_dir_path,
-                    shuffle=True,
-                )
-                valid_data = data_loader.create_data_loader(
-                    data_dir_path=valid_dir_path,
-                    shuffle=False,
-                )
-
-            elif (
-                not validation_exists
-                and "validation_size" in preprocessing_config
-                and preprocessing_config["validation_size"] > 0
-            ):
-                logger.info("Creating validation data from training folder...")
-                train_data, valid_data = data_loader.create_data_loader(
-                    data_dir_path=train_dir_path,
-                    shuffle=True,
-                    create_validation=True,
-                    val_size=preprocessing_config["validation_size"],
-                )
-            else:
-                logger.info("No validation data used.")
-                train_data = data_loader.create_data_loader(
-                    data_dir_path=train_dir_path,
-                    shuffle=True,
-                )
-                valid_data = None
 
             # use default hyperparameters to train model
             logger.info("Loading hyperparameters...")
             default_hyperparameters = read_json_as_dict(
                 default_hyperparameters_file_path
+            )
+
+            logger.info("Loading input training...")
+            data_loader, train_data, valid_data = read_train_val_data(
+                train_dir_path=train_dir_path,
+                valid_dir_path=valid_dir_path,
+                preprocessing_config=preprocessing_config,
+                validation_exists=validation_exists,
+                logger=logger.info,
             )
 
             # # use default hyperparameters to train model

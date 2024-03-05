@@ -7,6 +7,7 @@ from prediction.predictor_model import load_predictor_model, predict_with_model
 from torch_utils.data_loader import CustomDataLoader
 from utils import (
     save_dataframe_as_csv,
+    read_test_data,
     ResourceTracker,
 )
 
@@ -62,9 +63,8 @@ def run_batch_predictions(
             logger.info("Making batch predictions...")
 
             logger.info("Loading test data...")
-            data_loader = CustomDataLoader.load(data_loader_file_path)
-            test_data, image_names = data_loader.create_test_data_loader(
-                data_dir_path=test_dir_path,
+            data_loader, test_data, image_names = read_test_data(
+                data_loader_file_path=data_loader_file_path, test_dir_path=test_dir_path
             )
 
             logger.info("Loading predictor model...")
