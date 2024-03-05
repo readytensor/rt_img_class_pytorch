@@ -4,7 +4,6 @@ import pandas as pd
 from config import paths
 from logger import get_logger, log_error
 from prediction.predictor_model import load_predictor_model, predict_with_model
-from torch_utils.data_loader import CustomDataLoader
 from utils import (
     save_dataframe_as_csv,
     read_test_data,
