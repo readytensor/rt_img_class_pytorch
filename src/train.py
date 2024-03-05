@@ -64,6 +64,7 @@ def run_training(
             logger.info("Loading train data...")
             data_loader = CustomDataLoader(**preprocessing_config)
             if validation_exists:
+                logger.info("Validation data provided. Reading validation data...")
                 train_data = data_loader.create_data_loader(
                     data_dir_path=train_dir_path,
                     shuffle=True,
@@ -78,6 +79,7 @@ def run_training(
                 and "validation_size" in preprocessing_config
                 and preprocessing_config["validation_size"] > 0
             ):
+                logger.info("Creating validation data from training folder...")
                 train_data, valid_data = data_loader.create_data_loader(
                     data_dir_path=train_dir_path,
                     shuffle=True,
@@ -85,6 +87,7 @@ def run_training(
                     val_size=preprocessing_config["validation_size"],
                 )
             else:
+                logger.info("No validation data used.")
                 train_data = data_loader.create_data_loader(
                     data_dir_path=train_dir_path,
                     shuffle=True,
