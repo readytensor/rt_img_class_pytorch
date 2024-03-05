@@ -12,6 +12,13 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from torchvision.models import ResNet18_Weights, resnet18
 from torch_utils.early_stopping import EarlyStopping
+from torch.optim.lr_scheduler import (
+    ReduceLROnPlateau,
+    CosineAnnealingLR,
+    ExponentialLR,
+    StepLR,
+    _LRScheduler,
+)
 from logger import get_logger
 from tqdm import tqdm
 
@@ -46,6 +53,20 @@ def get_optimizer(optimizer: str) -> Optimizer:
     return supported_optimizers[optimizer]
 
 
+def get_lr_scheduler(scheduler: str) -> _LRScheduler:
+    supported_schedulers = {
+        "step": StepLR,
+        "exponential": ExponentialLR,
+        "plateau": ReduceLROnPlateau,
+        "cosine_annealing": CosineAnnealingLR,
+    }
+    if scheduler not in supported_schedulers.keys():
+        raise ValueError(
+            f"{scheduler} is not a supported optimizer. Supported: {supported_schedulers}"
+        )
+    return supported_schedulers[scheduler]
+
+
 class ImageClassifier:
     """ResNet18 Image Classifier.
 
@@ -61,12 +82,32 @@ class ImageClassifier:
         lr: float = 0.001,
         optimizer: str = "adam",
         max_epochs: int = 10,
-        early_stopping: bool = True,
+        early_stopping: bool = False,
         early_stopping_patience: int = 10,
         early_stopping_delta: float = 0.05,
+        lr_scheduler: str = None,
+        lr_scheduler_kwargs: dict = None,
         **kwargs,
     ):
-        """Construct a new ResNet18 image classifier."""
+        """
+        Construct a new ResNet18 image classifier
+
+        Args:
+        - num_classes (int): Number of output classes in the dataset.
+        - lr (float): Learning rate for the optimizer. Default is 0.001.
+        - optimizer (str): Name of the optimizer to use for training. Default is "adam". supported optimizers: {"adam", "sgd"}
+        - max_epochs (int): Maximum number of training epochs. Default is 10.
+        - early_stopping (bool): Whether to enable early stopping. Default is False.
+        - early_stopping_patience (int): Number of epochs with no improvement after which training will be stopped. Default is 10.
+        - early_stopping_delta (float): Minimum change in the monitored quantity to qualify as an improvement. Default is 0.05.
+        - lr_scheduler (str): Name of the learning rate scheduler to use. If None, no scheduler will be used. Default is None.
+        supported schedulers: {"step", "exponential", "plateau", "cosine_annealing"}
+        - lr_scheduler_kwargs (dict): Keyword arguments to pass to the learning rate scheduler constructor. Default is None.
+
+        Note:
+        - The `lr_scheduler_kwargs` should contain any necessary arguments needed by the specified learning rate scheduler, excluding those arguments automatically determined by the training process, such as the optimizer.
+
+        """
         self.lr = lr
         self.optimizer_str = optimizer
         self.max_epochs = max_epochs
@@ -74,6 +115,8 @@ class ImageClassifier:
         self.early_stopping = early_stopping
         self.early_stopping_delta = early_stopping_delta
         self.early_stopping_patience = early_stopping_patience
+        self.lr_scheduler_str = lr_scheduler
+        self.lr_scheduler_kwargs = lr_scheduler_kwargs
         self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
 
@@ -83,6 +126,12 @@ class ImageClassifier:
         self.model = model
 
         self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
+        if self.lr_scheduler_str is not None:
+            self.lr_scheduler = get_lr_scheduler(lr_scheduler)(
+                self.optimizer, **self.lr_scheduler_kwargs
+            )
+        else:
+            self.lr_scheduler = None
 
     def forward_backward(self, data: DataLoader):
         for inputs, labels in data:
@@ -95,6 +144,8 @@ class ImageClassifier:
             loss = self.loss_function(outputs, labels)
             loss.backward()
             self.optimizer.step()
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
 
     def fit(self, train_data: DataLoader, valid_data: DataLoader = None):
         self.model.to(device)
@@ -185,6 +236,8 @@ class ImageClassifier:
         model_params = {
             "lr": self.lr,
             "optimizer": self.optimizer_str,
+            "lr_scheduler": self.lr_scheduler_str,
+            "lr_scheduler_kwargs": self.lr_scheduler_kwargs,
             "max_epochs": self.max_epochs,
             "early_stopping": self.early_stopping,
             "early_stopping_patience": self.early_stopping_patience,
