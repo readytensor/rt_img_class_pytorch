@@ -21,6 +21,7 @@ logger = get_logger(task_name="model")
 
 # Check for GPU availability
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
+logger.info(f"Using device: {device}")
 
 
 def get_loss(model, data_loader, loss_function):
@@ -76,7 +77,7 @@ class ImageClassifier:
         self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
 
-        model = resnet18(weights=ResNet18_Weights, pretrained=True)
+        model = resnet18(weights=ResNet18_Weights)
         in_features = model.fc.in_features
         model.fc = Linear(in_features, num_classes)
         self.model = model
