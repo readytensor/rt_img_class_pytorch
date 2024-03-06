@@ -5,8 +5,8 @@
   "early_stopping": false,
   "early_stopping_patience": 3,
   "early_stopping_delta": 0.05,
-  "scheduler": "plateau",
-  "scheduler_kwargs": {
+  "lr_scheduler": "plateau",
+  "lr_scheduler_kwargs": {
     "mode": "min",
     "factor": 0.1,
     "patience": 2,
