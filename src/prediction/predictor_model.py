@@ -134,6 +134,7 @@ class ImageClassifier:
             self.lr_scheduler = None
 
     def forward_backward(self, data: DataLoader):
+        self.model.train()
         for inputs, labels in data:
             inputs, labels = inputs.to(device), labels.to(device)
             self.optimizer.zero_grad()
@@ -150,7 +151,6 @@ class ImageClassifier:
 
     def fit(self, train_data: DataLoader, valid_data: DataLoader = None):
         self.model.to(device)
-        self.model.train()
         total_batches = len(train_data)
         early_stopper = EarlyStopping(
             patience=self.early_stopping_patience,
@@ -158,7 +158,6 @@ class ImageClassifier:
             trace_func=logger.info,
         )
         for epoch in range(self.max_epochs):
-            train_loss, val_loss = 0, 0
             train_progress_bar = tqdm(
                 total=total_batches,
                 desc=f"Training - Epoch {epoch + 1}/{self.max_epochs}",
@@ -166,12 +165,12 @@ class ImageClassifier:
 
             self.forward_backward(train_data)
 
-            train_loss += get_loss(self.model, train_data, self.loss_function)
-            logger.info(f"Train loss for epoch{epoch+1}: {train_loss}")
+            train_loss = get_loss(self.model, train_data, self.loss_function)
+            logger.info(f"Train loss for epoch {epoch+1}: {train_loss}")
 
             if valid_data is not None:
-                val_loss += get_loss(self.model, valid_data, self.loss_function)
-                logger.info(f"Validation loss for epoch{epoch+1}: {val_loss}")
+                val_loss = get_loss(self.model, valid_data, self.loss_function)
+                logger.info(f"Validation loss for epoch {epoch+1}: {val_loss}")
 
             train_progress_bar.update(1)
 
