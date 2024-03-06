@@ -167,16 +167,12 @@ class ImageClassifier:
             self.forward_backward(train_data)
 
             train_loss += get_loss(self.model, train_data, self.loss_function)
+            logger.info(f"Train loss for epoch{epoch+1}: {train_loss}")
 
             if valid_data is not None:
                 val_loss += get_loss(self.model, valid_data, self.loss_function)
+                logger.info(f"Validation loss for epoch{epoch+1}: {val_loss}")
 
-            # Update the progress bar with the latest losses
-            train_progress_bar.set_postfix(
-                train_loss=f"{train_loss:.4f}",
-                val_loss=f"{val_loss:.4f}" if valid_data is not None else "N/A",
-                refresh=True,
-            )
             train_progress_bar.update(1)
 
             if self.early_stopping:
@@ -185,7 +181,7 @@ class ImageClassifier:
                     break
         train_progress_bar.close()
 
-    def predict(self, data: DataLoader) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def predict(self, data: DataLoader) -> Tuple[np.ndarray, np.ndarray]:
         """
         Predicts the class labels and probabilities for the given data.
 
@@ -193,7 +189,7 @@ class ImageClassifier:
             data (DataLoader): The input data.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, np.ndarray]: (Truth labels, Predicted class labels, Probabilities).
+            Tuple[np.ndarray, np.ndarray]: (Predicted class labels, Probabilities).
         """
         self.model.eval()
         self.model.to(device)
