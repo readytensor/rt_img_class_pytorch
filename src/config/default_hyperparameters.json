@@ -2,7 +2,14 @@
   "lr": 0.1,
   "optimizer": "adam",
   "max_epochs": 10,
-  "early_stopping": true,
+  "early_stopping": false,
   "early_stopping_patience": 3,
-  "early_stopping_delta": 0.05
+  "early_stopping_delta": 0.05,
+  "scheduler": "plateau",
+  "scheduler_kwargs": {
+    "model": "min",
+    "factor": 0.1,
+    "patience": 2,
+    "verbose": true
+  }
 }

@@ -155,7 +155,6 @@ class ImageClassifier:
         early_stopper = EarlyStopping(
             patience=self.early_stopping_patience,
             delta=self.early_stopping_delta,
-            trace_func=logger.info,
         )
         for epoch in range(self.max_epochs):
             train_progress_bar = tqdm(
@@ -166,17 +165,18 @@ class ImageClassifier:
             self.forward_backward(train_data)
 
             train_loss = get_loss(self.model, train_data, self.loss_function)
-            logger.info(f"Train loss for epoch {epoch+1}: {train_loss}")
+            logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
 
             if valid_data is not None:
                 val_loss = get_loss(self.model, valid_data, self.loss_function)
-                logger.info(f"Validation loss for epoch {epoch+1}: {val_loss}")
+                logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
 
             train_progress_bar.update(1)
 
             if self.early_stopping:
                 loss = val_loss if valid_data is not None else train_loss
                 if early_stopper(loss):
+                    logger.info(f"Early stopping after {epoch+1} epochs")
                     break
         train_progress_bar.close()
 
