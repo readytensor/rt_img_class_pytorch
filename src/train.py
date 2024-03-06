@@ -78,7 +78,7 @@ def run_training(
                 logger=logger.info,
             )
 
-            # # use default hyperparameters to train model
+            # use default hyperparameters to train model
             logger.info("Training model...")
             model = train_predictor_model(
                 train_data=train_data,

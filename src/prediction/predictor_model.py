@@ -31,7 +31,7 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 logger.info(f"Using device: {device}")
 
 
-def get_loss(model, data_loader, loss_function):
+def get_loss(model, data_loader, loss_function) -> float:
     model.eval()
     loss_total = 0
     with torch.no_grad():
@@ -144,6 +144,7 @@ class ImageClassifier:
             loss = self.loss_function(outputs, labels)
             loss.backward()
             self.optimizer.step()
+
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
 
@@ -170,6 +171,12 @@ class ImageClassifier:
             if valid_data is not None:
                 val_loss += get_loss(self.model, valid_data, self.loss_function)
 
+            # Update the progress bar with the latest losses
+            train_progress_bar.set_postfix(
+                train_loss=f"{train_loss:.4f}",
+                val_loss=f"{val_loss:.4f}" if valid_data is not None else "N/A",
+                refresh=True,
+            )
             train_progress_bar.update(1)
 
             if self.early_stopping:
@@ -266,7 +273,7 @@ class ImageClassifier:
         model_state = torch.load(model_path)
 
         num_classes = params["num_classes"]
-        model = resnet18(weights=ResNet18_Weights)
+        model = resnet18(pretrained=False)
 
         in_features = model.fc.in_features
         model.fc = Linear(in_features, num_classes)
