@@ -146,9 +146,6 @@ class ImageClassifier:
             loss.backward()
             self.optimizer.step()
 
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
-
     def fit(self, train_data: DataLoader, valid_data: DataLoader = None):
         self.model.to(device)
         total_batches = len(train_data)
@@ -172,6 +169,10 @@ class ImageClassifier:
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
 
             train_progress_bar.update(1)
+
+            if self.lr_scheduler is not None:
+                loss = val_loss if valid_data is not None else train_loss
+                self.lr_scheduler.step(loss)
 
             if self.early_stopping:
                 loss = val_loss if valid_data is not None else train_loss
