@@ -9,7 +9,7 @@
   "lr_scheduler_kwargs": {
     "mode": "min",
     "factor": 0.1,
-    "patience": 2,
+    "patience": 3,
     "verbose": true
   }
 }

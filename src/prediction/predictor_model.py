@@ -135,6 +135,10 @@ class ImageClassifier:
 
     def forward_backward(self, data: DataLoader):
         self.model.train()
+        train_progress_bar = tqdm(
+            total=len(data),
+            desc=f"Batch progress",
+        )
         for inputs, labels in data:
             inputs, labels = inputs.to(device), labels.to(device)
             self.optimizer.zero_grad()
@@ -146,18 +150,17 @@ class ImageClassifier:
             loss.backward()
             self.optimizer.step()
 
+            train_progress_bar.update(1)
+        train_progress_bar.close()
+
     def fit(self, train_data: DataLoader, valid_data: DataLoader = None):
+        last_lr = self.lr
         self.model.to(device)
-        total_batches = len(train_data)
         early_stopper = EarlyStopping(
             patience=self.early_stopping_patience,
             delta=self.early_stopping_delta,
         )
         for epoch in range(self.max_epochs):
-            train_progress_bar = tqdm(
-                total=total_batches,
-                desc=f"Training - Epoch {epoch + 1}/{self.max_epochs}",
-            )
 
             self.forward_backward(train_data)
 
@@ -168,18 +171,19 @@ class ImageClassifier:
                 val_loss = get_loss(self.model, valid_data, self.loss_function)
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
 
-            train_progress_bar.update(1)
-
             if self.lr_scheduler is not None:
                 loss = val_loss if valid_data is not None else train_loss
                 self.lr_scheduler.step(loss)
+                scheduler_lr = self.lr_scheduler.get_last_lr()[0]
+                if last_lr != scheduler_lr:
+                    logger.info(f"Learning rate reduced to {scheduler_lr}")
+                    last_lr = scheduler_lr
 
             if self.early_stopping:
                 loss = val_loss if valid_data is not None else train_loss
                 if early_stopper(loss):
                     logger.info(f"Early stopping after {epoch+1} epochs")
                     break
-        train_progress_bar.close()
 
     def predict(self, data: DataLoader) -> Tuple[np.ndarray, np.ndarray]:
         """
