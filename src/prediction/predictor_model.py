@@ -130,8 +130,7 @@ class ImageClassifier:
 
         self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
         if self.lr_scheduler_str is not None:
-            self.lr_scheduler = get_lr_scheduler(lr_scheduler)
-            self.lr_scheduler = self.lr_scheduler(
+            self.lr_scheduler = get_lr_scheduler(lr_scheduler)(
                 self.optimizer, **self.lr_scheduler_kwargs
             )
 
