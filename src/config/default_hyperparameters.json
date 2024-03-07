@@ -8,6 +8,7 @@
   "lr_scheduler": "warmup_cosine_annealing",
   "lr_scheduler_kwargs": {
     "base_lr": 0.001,
-    "warmup_epochs": 2
+    "warmup_epochs": 2,
+    "num_epochs": 10
   }
 }

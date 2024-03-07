@@ -17,9 +17,9 @@ from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
     ExponentialLR,
     StepLR,
-    LambdaLR,
     _LRScheduler,
 )
+from torch_utils.lr_scheduler import WarmupCosineAnnealing
 from logger import get_logger
 from tqdm import tqdm
 
@@ -54,24 +54,6 @@ def get_optimizer(optimizer: str) -> Optimizer:
     return supported_optimizers[optimizer]
 
 
-def warmup_cosine_annealing(base_lr, warmup_epochs, num_epochs):
-    def lr_lambda(epoch):
-        if epoch < warmup_epochs:
-            return base_lr * (epoch / warmup_epochs)
-        else:
-            return base_lr * (
-                0.5
-                * (
-                    1
-                    + math.cos(
-                        math.pi * (epoch - warmup_epochs) / (num_epochs - warmup_epochs)
-                    )
-                )
-            )
-
-    return lr_lambda
-
-
 def get_lr_scheduler(scheduler: str) -> _LRScheduler:
 
     supported_schedulers = {
@@ -79,7 +61,7 @@ def get_lr_scheduler(scheduler: str) -> _LRScheduler:
         "exponential": ExponentialLR,
         "plateau": ReduceLROnPlateau,
         "cosine_annealing": CosineAnnealingLR,
-        "warmup_cosine_annealing": LambdaLR,
+        "warmup_cosine_annealing": WarmupCosineAnnealing,
     }
     if scheduler not in supported_schedulers.keys():
         raise ValueError(
@@ -149,21 +131,9 @@ class ImageClassifier:
         self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
         if self.lr_scheduler_str is not None:
             self.lr_scheduler = get_lr_scheduler(lr_scheduler)
-            if self.lr_scheduler_str == "warmup_cosine_annealing":
-                warmup_epochs = self.lr_scheduler_kwargs["warmup_epochs"]
-                base_lr = self.lr_scheduler_kwargs["base_lr"]
-                lr_lambda = (
-                    warmup_cosine_annealing(base_lr, warmup_epochs, self.max_epochs),
-                )
-                self.lr_scheduler = self.lr_scheduler(
-                    self.optimizer, lr_lambda=lr_lambda
-                )
-
-            else:
-
-                self.lr_scheduler = self.lr_scheduler(
-                    self.optimizer, **self.lr_scheduler_kwargs
-                )
+            self.lr_scheduler = self.lr_scheduler(
+                self.optimizer, **self.lr_scheduler_kwargs
+            )
 
         else:
             self.lr_scheduler = None
