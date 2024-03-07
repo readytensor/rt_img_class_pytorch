@@ -1,13 +1,13 @@
 {
-  "lr": 0.001,
+  "lr": 0.1,
   "optimizer": "adam",
   "max_epochs": 10,
   "early_stopping": false,
   "early_stopping_patience": 3,
   "early_stopping_delta": 0.05,
-  "lr_scheduler": "cosine_annealing",
+  "lr_scheduler": "warmup_cosine_annealing",
   "lr_scheduler_kwargs": {
-    "T_max": 10,
-    "eta_min": 0
+    "base_lr": 0.001,
+    "warmup_epochs": 2
   }
 }
