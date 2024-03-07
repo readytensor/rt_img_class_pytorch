@@ -1,15 +1,13 @@
 {
-  "lr": 0.01,
+  "lr": 0.001,
   "optimizer": "adam",
   "max_epochs": 10,
   "early_stopping": false,
   "early_stopping_patience": 3,
   "early_stopping_delta": 0.05,
-  "lr_scheduler": "plateau",
+  "lr_scheduler": "cosine_annealing",
   "lr_scheduler_kwargs": {
-    "mode": "min",
-    "factor": 0.1,
-    "patience": 3,
-    "verbose": true
+    "T_max": 10,
+    "eta_min": 0
   }
 }
