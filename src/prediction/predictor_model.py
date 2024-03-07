@@ -79,7 +79,7 @@ class ImageClassifier:
     def __init__(
         self,
         num_classes: int,
-        lr: float = 0.001,
+        lr: float = 0.01,
         optimizer: str = "adam",
         max_epochs: int = 10,
         early_stopping: bool = False,
@@ -137,7 +137,7 @@ class ImageClassifier:
         self.model.train()
         train_progress_bar = tqdm(
             total=len(data),
-            desc=f"Batch progress",
+            desc="Epoch progress",
         )
         for inputs, labels in data:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -164,12 +164,12 @@ class ImageClassifier:
 
             self.forward_backward(train_data)
 
-            train_loss = get_loss(self.model, train_data, self.loss_function)
-            logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
-
             if valid_data is not None:
                 val_loss = get_loss(self.model, valid_data, self.loss_function)
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
+            else:
+                train_loss = get_loss(self.model, train_data, self.loss_function)
+                logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
 
             if self.lr_scheduler is not None:
                 loss = val_loss if valid_data is not None else train_loss
