@@ -150,8 +150,8 @@ class ImageClassifier:
         if self.lr_scheduler_str is not None:
             self.lr_scheduler = get_lr_scheduler(lr_scheduler)
             if self.lr_scheduler_str == "warmup_cosine_annealing":
-                warmup_epochs = self.lr_scheduler_kwargs.pop("warmup_epochs")
-                base_lr = self.lr_scheduler_kwargs.pop("base_lr")
+                warmup_epochs = self.lr_scheduler_kwargs["warmup_epochs"]
+                base_lr = self.lr_scheduler_kwargs["base_lr"]
                 lr_lambda = (
                     warmup_cosine_annealing(base_lr, warmup_epochs, self.max_epochs),
                 )
