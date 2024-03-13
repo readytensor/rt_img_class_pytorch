@@ -3,12 +3,13 @@ import pandas as pd
 
 from config import paths
 from logger import get_logger, log_error
-from prediction.predictor_model import load_predictor_model, predict_with_model
+from prediction.predictor_model import predict_with_model
 from utils import (
     save_dataframe_as_csv,
-    read_test_data,
     ResourceTracker,
 )
+from data_loader.data_loader import load_data_loader_factory
+from models.resnet import load_predictor_model as load_resnet_predictor_model
 
 logger = get_logger(task_name="predict")
 
@@ -58,16 +59,19 @@ def run_batch_predictions(
     """
 
     try:
-        with ResourceTracker(logger, monitoring_interval=5) as _:
+        with ResourceTracker(logger, monitoring_interval=5):
             logger.info("Making batch predictions...")
 
             logger.info("Loading test data...")
-            data_loader, test_data, image_names = read_test_data(
-                data_loader_file_path=data_loader_file_path, test_dir_path=test_dir_path
+            data_loader = load_data_loader_factory(
+                data_loader_file_path=data_loader_file_path
+            )
+            test_data, image_names = data_loader.create_test_data_loader(
+                data_dir_path=test_dir_path
             )
 
             logger.info("Loading predictor model...")
-            predictor_model = load_predictor_model(predictor_dir_path)
+            predictor_model = load_resnet_predictor_model(predictor_dir_path)
 
             logger.info("Making predictions...")
             predicted_labels, predicted_probabilities = predict_with_model(

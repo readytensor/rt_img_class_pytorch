@@ -3,20 +3,20 @@ from config import paths
 from logger import get_logger, log_error
 from prediction.predictor_model import (
     save_predictor_model,
-    train_predictor_model,
 )
-
+from data_loader.data_loader import get_data_loader
 from utils import (
     read_json_as_dict,
     set_seeds,
     contains_subdirectories,
-    read_train_val_data,
     ResourceTracker,
 )
+from models.resnet import train_predictor_model as train_resnet_model
+
 
 logger = get_logger(task_name="train")
 
-validation_exists = os.path.isdir(paths.VALIDATION_DIR) and contains_subdirectories(
+VALIDATION_EXISTS = os.path.isdir(paths.VALIDATION_DIR) and contains_subdirectories(
     paths.VALIDATION_DIR
 )
 
@@ -60,9 +60,6 @@ def run_training(
             logger.info("Setting seeds...")
             set_seeds(seed_value=model_config["seed_value"])
 
-            # load train data and validation data if available
-            logger.info("Loading train data...")
-
             # use default hyperparameters to train model
             logger.info("Loading hyperparameters...")
             default_hyperparameters = read_json_as_dict(
@@ -70,26 +67,29 @@ def run_training(
             )
 
             logger.info("Loading input training...")
-            data_loader, train_data, valid_data = read_train_val_data(
-                train_dir_path=train_dir_path,
-                valid_dir_path=valid_dir_path,
-                preprocessing_config=preprocessing_config,
-                validation_exists=validation_exists,
-                logger=logger.info,
+            data_loader_factory = get_data_loader(model_config["model_name"])(
+                **preprocessing_config
+            )
+            train_data_loader, valid_data_loader = (
+                data_loader_factory.create_train_and_valid_data_loaders(
+                    train_dir_path=train_dir_path,
+                    validation_dir_path=valid_dir_path if VALIDATION_EXISTS else None,
+                )
             )
 
             # use default hyperparameters to train model
-            logger.info("Training model...")
-            model = train_predictor_model(
-                train_data=train_data,
-                valid_data=valid_data,
-                num_classes=data_loader.num_classes,
+            logger.info(f"Training model ({model_config['model_name']})...")
+            model = train_resnet_model(
+                model_name=model_config["model_name"],
+                train_data=train_data_loader,
+                valid_data=valid_data_loader,
+                num_classes=data_loader_factory.num_classes,
                 hyperparameters=default_hyperparameters,
             )
 
         # save data loader
         logger.info("Saving data loader...")
-        data_loader.save(data_loader_save_path)
+        data_loader_factory.save(data_loader_save_path)
 
         # save predictor model
         logger.info("Saving model...")

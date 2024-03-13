@@ -6,10 +6,10 @@ from typing import Tuple
 
 import torch
 from torch.optim import Optimizer
-from torch.nn import Linear, CrossEntropyLoss
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-from torchvision.models import ResNet18_Weights, resnet18
+
 from torch_utils.early_stopping import EarlyStopping
 from torch.optim.lr_scheduler import (
     ReduceLROnPlateau,
@@ -21,6 +21,7 @@ from torch.optim.lr_scheduler import (
 from torch_utils.lr_scheduler import WarmupCosineAnnealing
 from logger import get_logger
 from tqdm import tqdm
+
 
 warnings.filterwarnings("ignore")
 
@@ -122,11 +123,6 @@ class ImageClassifier:
         self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
 
-        model = resnet18(weights=ResNet18_Weights)
-        in_features = model.fc.in_features
-        model.fc = Linear(in_features, num_classes)
-        self.model = model
-
         self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
         if self.lr_scheduler_str is not None:
             self.lr_scheduler = get_lr_scheduler(lr_scheduler)(
@@ -224,12 +220,6 @@ class ImageClassifier:
 
         return all_predicted, all_probs
 
-    def evaluate(self, test_data: DataLoader):
-        """Evaluate the model and return the loss"""
-        return get_loss(
-            self.model, data_loader=test_data, loss_function=self.loss_function
-        )
-
     def save(self, predictor_dir_path: str) -> None:
         """
         Saves the model's state dictionary and training parameters to the specified path.
@@ -244,6 +234,7 @@ class ImageClassifier:
           and state are to be saved.
         """
         model_params = {
+            "model_name": self.model_name,
             "lr": self.lr,
             "optimizer": self.optimizer_str,
             "lr_scheduler": self.lr_scheduler_str,
@@ -259,66 +250,15 @@ class ImageClassifier:
         joblib.dump(model_params, params_path)
         torch.save(self.model.state_dict(), model_path)
 
-    @staticmethod
-    def load(predictor_dir_path: str) -> "ImageClassifier":
-        """
-        Loads a pretrained model and its training configuration from a specified path.
-
-        Args:
-        - predictor_dir_path (str): Path to the directory with model's parameters and state.
-
-        Returns:
-        - ImageClassifier: A trainer object with the loaded model and training configuration.
-        """
-        params_path = os.path.join(predictor_dir_path, "model_params.joblib")
-        model_path = os.path.join(predictor_dir_path, "model_state.pth")
-        params = joblib.load(params_path)
-        model_state = torch.load(model_path)
-
-        num_classes = params["num_classes"]
-        model = resnet18(pretrained=False)
-
-        in_features = model.fc.in_features
-        model.fc = Linear(in_features, num_classes)
-
-        model.load_state_dict(model_state)
-
-        trainer = ImageClassifier(**params)
-        trainer.model = model
-        return trainer
+    def evaluate(self, test_data: DataLoader):
+        """Evaluate the model and return the loss"""
+        return get_loss(
+            self.model, data_loader=test_data, loss_function=self.loss_function
+        )
 
     def __str__(self):
         # sort params alphabetically for unit test to run successfully
         return f"Model name: {self.MODEL_NAME}"
-
-
-def train_predictor_model(
-    train_data: DataLoader,
-    hyperparameters: dict,
-    num_classes: int,
-    valid_data: DataLoader = None,
-) -> ImageClassifier:
-    """
-    Instantiate and train the classifier model.
-
-    Args:
-        train_data (DataLoader): The training data.
-        hyperparameters (dict): Hyperparameters for the model.
-        num_classes (int): Number of classes in the classificatiion problem.
-        valid_data (DataLoader): The validation data.
-
-    Returns:
-        'ImageClassifier': The ImageClassifier model
-    """
-    model = ImageClassifier(
-        num_classes=num_classes,
-        **hyperparameters,
-    )
-    model.fit(
-        train_data=train_data,
-        valid_data=valid_data,
-    )
-    return model
 
 
 def predict_with_model(
@@ -349,19 +289,6 @@ def save_predictor_model(model: ImageClassifier, predictor_dir_path: str) -> Non
     if not os.path.exists(predictor_dir_path):
         os.makedirs(predictor_dir_path)
     model.save(predictor_dir_path)
-
-
-def load_predictor_model(predictor_dir_path: str) -> ImageClassifier:
-    """
-    Load the ImageClassifier model from disk.
-
-    Args:
-        predictor_dir_path (str): Dir path where model is saved.
-
-    Returns:
-        ImageClassifier: A new instance of the loaded ImageClassifier model.
-    """
-    return ImageClassifier.load(predictor_dir_path)
 
 
 def evaluate_predictor_model(model: ImageClassifier, test_data: DataLoader) -> float:

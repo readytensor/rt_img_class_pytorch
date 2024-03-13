@@ -1,4 +1,5 @@
 {
+  "model_name": "resnet50",
   "seed_value": 42,
   "prediction_field_name": "prediction"
 }

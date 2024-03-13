@@ -1,0 +1,205 @@
+import os
+import joblib
+from typing import Tuple, Union, List
+from pathlib import Path
+import numpy as np
+from torch.utils.data import DataLoader, Subset
+from torchvision.datasets import ImageFolder
+from torchvision import transforms
+
+from data_loader.base_loader import AbstractDataLoaderFactory
+
+
+class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
+    def __init__(
+        self,
+        batch_size: int = 64,
+        num_workers: int = 6,
+        mean: List[float] = [0.485, 0.456, 0.406],
+        std: List[float] = [0.229, 0.224, 0.225],
+        image_size: Tuple[int, int] = (224, 224),
+        validation_size: float = 0.0,
+        shuffle_train=True,
+        random_state: int = 42,
+    ):
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.mean = mean
+        self.std = std
+        self.image_size = tuple(image_size)
+        self.validation_size = validation_size
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize(self.image_size),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=self.mean, std=self.std),
+            ]
+        )
+        self.num_classes = None
+        self.shuffle_train = shuffle_train
+        self.random_state = random_state
+        self.num_classes = None
+
+    def create_train_and_valid_data_loaders(
+        self,
+        train_dir_path: str,
+        validation_dir_path: str = None,
+    ) -> Tuple[DataLoader, Union[DataLoader, None]]:
+        """
+        Creates DataLoader objects for training and, if specified, validation datasets.
+
+        This method automatically applies predefined transformations, encapsulates the
+        datasets into DataLoader objects for batched processing, and determines whether
+        to generate a validation split. A validation DataLoader is created either from
+        a provided validation dataset directory or by splitting the training dataset,
+        depending on the factory's configuration and the arguments passed.
+
+        Args:
+            train_data_dir_path: The path to the training dataset directory.
+            validation_dir_path: Optional; the path to the validation dataset directory.
+                                If provided, the validation dataset is loaded from this
+                                directory. Otherwise, a validation split can be created
+                                from the training dataset.
+        Returns:
+            A tuple of DataLoaders for the training and validation datasets.
+            The validation DataLoader is None if no validation dataset is provided or
+            created.
+        """
+
+        dataset = ImageFolder(root=train_dir_path, transform=self.transform)
+        self.class_to_idx = dataset.class_to_idx
+        self.num_classes = len(dataset.classes)
+        self.class_names = dataset.classes
+
+        # if validation data is given to us directly then load it
+        if validation_dir_path is not None:
+            validation_dataset = ImageFolder(
+                root=validation_dir_path, transform=self.transform
+            )
+            val_loader = DataLoader(
+                validation_dataset,
+                batch_size=self.batch_size,
+                shuffle=False,
+                num_workers=self.num_workers,
+            )
+            train_loader = DataLoader(
+                dataset,
+                batch_size=self.batch_size,
+                shuffle=self.shuffle_train,
+                num_workers=self.num_workers,
+            )
+        else:
+            if self.validation_size > 0:
+                # Create validation split out of train split
+
+                # Manual implementation of stratified sampling
+                np.random.seed(self.random_state)
+                targets = np.array(dataset.targets)
+                classes, _ = np.unique(targets, return_counts=True)
+                class_indices = [np.where(targets == i)[0] for i in classes]
+
+                train_indices, val_indices = [], []
+                for indices in class_indices:
+                    np.random.shuffle(indices)
+                    split = int(len(indices) * self.validation_size)
+                    val_indices.extend(indices[:split])
+                    train_indices.extend(indices[split:])
+
+                train_subset = Subset(dataset, train_indices)
+                val_subset = Subset(dataset, val_indices)
+
+                train_loader = DataLoader(
+                    train_subset,
+                    batch_size=self.batch_size,
+                    shuffle=self.shuffle_train,
+                    num_workers=self.num_workers,
+                )
+                val_loader = DataLoader(
+                    val_subset,
+                    batch_size=self.batch_size,
+                    shuffle=False,
+                    num_workers=self.num_workers,
+                )
+            else:
+                # No validation data to use
+                val_loader = None
+                train_loader = DataLoader(
+                    dataset,
+                    batch_size=self.batch_size,
+                    shuffle=self.shuffle_train,
+                    num_workers=self.num_workers,
+                )
+        return train_loader, val_loader
+
+    def create_test_data_loader(self, data_dir_path: str):
+        """
+        Create a PyTorch DataLoader for test data.
+
+        Args:
+            data_dir_path: Path to the test dataset directory.
+
+        Returns:
+            A DataLoader for test data.
+        """
+        test_dataset = ImageFolder(root=data_dir_path, transform=self.transform)
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+        )
+        image_names = [Path(i[0]).name for i in test_dataset.imgs]
+        return test_loader, image_names
+
+    def save(self, file_path: str) -> None:
+        """
+        Save the data loader factory to a file.
+
+        Args:
+            file_path (str): The path to the file where the data loader factory will
+                             be saved.
+        """
+        path = Path(file_path)
+        directory_path = path.parent
+        os.makedirs(directory_path, exist_ok=True)
+        joblib.dump(self, file_path)
+
+
+def get_data_loader(model_name: str) -> PyTorchDataLoaderFactory:
+    resnet = {"resnet18", "resnet34", "resnet50", "resnet101", "resnet152"}
+    if model_name in resnet:
+        return ResNetDataLoader
+
+    raise ValueError(f"Invalid model name. supported model names: {resnet}")
+
+
+def load_data_loader_factory(data_loader_file_path: str) -> PyTorchDataLoaderFactory:
+    """
+    Load the data loader factory from a file.
+    """
+    return joblib.load(data_loader_file_path)
+
+
+class ResNetDataLoader(PyTorchDataLoaderFactory):
+    MEAN = [0.485, 0.456, 0.406]
+    STD = [0.229, 0.224, 0.225]
+    IMAGE_SIZE = (224, 224)
+
+    def __init__(
+        self,
+        batch_size: int = 64,
+        validation_size: float = 0.0,
+        shuffle_train=True,
+        num_workers: int = 0,
+        random_state: int = 42,
+    ):
+        super().__init__(
+            batch_size=batch_size,
+            num_workers=num_workers,
+            mean=self.MEAN,
+            std=self.STD,
+            image_size=self.IMAGE_SIZE,
+            validation_size=validation_size,
+            shuffle_train=shuffle_train,
+            random_state=random_state,
+        )
