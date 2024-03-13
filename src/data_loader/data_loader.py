@@ -13,11 +13,12 @@ from data_loader.base_loader import AbstractDataLoaderFactory
 class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
     def __init__(
         self,
-        batch_size: int = 64,
-        num_workers: int = 6,
-        mean: List[float] = [0.485, 0.456, 0.406],
-        std: List[float] = [0.229, 0.224, 0.225],
-        image_size: Tuple[int, int] = (224, 224),
+        batch_size: int,
+        num_workers: int,
+        mean: List[float],
+        std: List[float],
+        image_size: Tuple[int, int],
+        transforms: transforms.Compose,
         validation_size: float = 0.0,
         shuffle_train=True,
         random_state: int = 42,
@@ -28,13 +29,7 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
         self.std = std
         self.image_size = tuple(image_size)
         self.validation_size = validation_size
-        self.transform = transforms.Compose(
-            [
-                transforms.Resize(self.image_size),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=self.mean, std=self.std),
-            ]
-        )
+        self.transform = transforms
         self.num_classes = None
         self.shuffle_train = shuffle_train
         self.random_state = random_state
@@ -185,6 +180,15 @@ class ResNetDataLoader(PyTorchDataLoaderFactory):
     STD = [0.229, 0.224, 0.225]
     IMAGE_SIZE = (224, 224)
 
+    TRANSFORMS = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
     def __init__(
         self,
         batch_size: int = 64,
@@ -198,6 +202,42 @@ class ResNetDataLoader(PyTorchDataLoaderFactory):
             num_workers=num_workers,
             mean=self.MEAN,
             std=self.STD,
+            tansforms=self.TRANSFORMS,
+            image_size=self.IMAGE_SIZE,
+            validation_size=validation_size,
+            shuffle_train=shuffle_train,
+            random_state=random_state,
+        )
+
+
+class InceptionV3DataLoader(PyTorchDataLoaderFactory):
+    MEAN = [0.485, 0.456, 0.406]
+    STD = [0.229, 0.224, 0.225]
+    IMAGE_SIZE = (224, 224)
+
+    TRANSFORMS = transforms.Compose(
+        [
+            transforms.Resize(299),
+            transforms.CenterCrop(299),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
+    def __init__(
+        self,
+        batch_size: int = 64,
+        validation_size: float = 0.0,
+        shuffle_train=True,
+        num_workers: int = 0,
+        random_state: int = 42,
+    ):
+        super().__init__(
+            batch_size=batch_size,
+            num_workers=num_workers,
+            mean=self.MEAN,
+            std=self.STD,
+            tansforms=self.TRANSFORMS,
             image_size=self.IMAGE_SIZE,
             validation_size=validation_size,
             shuffle_train=shuffle_train,
