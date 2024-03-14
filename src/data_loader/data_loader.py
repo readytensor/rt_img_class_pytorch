@@ -1,6 +1,6 @@
 import os
 import joblib
-from typing import Tuple, Union, List
+from typing import Tuple, Union
 from pathlib import Path
 import numpy as np
 from torch.utils.data import DataLoader, Subset
@@ -15,9 +15,6 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
         self,
         batch_size: int,
         num_workers: int,
-        mean: List[float],
-        std: List[float],
-        image_size: Tuple[int, int],
         transforms: transforms.Compose,
         validation_size: float = 0.0,
         shuffle_train=True,
@@ -25,9 +22,6 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
     ):
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.mean = mean
-        self.std = std
-        self.image_size = tuple(image_size)
         self.validation_size = validation_size
         self.transform = transforms
         self.num_classes = None
@@ -161,11 +155,25 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
 
 
 def get_data_loader(model_name: str) -> PyTorchDataLoaderFactory:
-    resnet = {"resnet18", "resnet34", "resnet50", "resnet101", "resnet152"}
-    if model_name in resnet:
-        return ResNetDataLoader
+    ordinary = {
+        "resnet18",
+        "resnet34",
+        "resnet50",
+        "resnet101",
+        "resnet152",
+        "inceptionV1",
+        "mnasnet1_0",
+        "mnasnet1_3",
+        "mnasnet0_5",
+    }
+    inception = {"inceptionV3"}
+    supported = ordinary | inception
+    if model_name in ordinary:
+        return OrdinaryDataLoader
+    if model_name in inception:
+        return InceptionV3DataLoader
 
-    raise ValueError(f"Invalid model name. supported model names: {resnet}")
+    raise ValueError(f"Invalid model name. supported model names: {supported}")
 
 
 def load_data_loader_factory(data_loader_file_path: str) -> PyTorchDataLoaderFactory:
@@ -175,11 +183,7 @@ def load_data_loader_factory(data_loader_file_path: str) -> PyTorchDataLoaderFac
     return joblib.load(data_loader_file_path)
 
 
-class ResNetDataLoader(PyTorchDataLoaderFactory):
-    MEAN = [0.485, 0.456, 0.406]
-    STD = [0.229, 0.224, 0.225]
-    IMAGE_SIZE = (224, 224)
-
+class OrdinaryDataLoader(PyTorchDataLoaderFactory):
     TRANSFORMS = transforms.Compose(
         [
             transforms.Resize(256),
@@ -200,10 +204,7 @@ class ResNetDataLoader(PyTorchDataLoaderFactory):
         super().__init__(
             batch_size=batch_size,
             num_workers=num_workers,
-            mean=self.MEAN,
-            std=self.STD,
-            tansforms=self.TRANSFORMS,
-            image_size=self.IMAGE_SIZE,
+            transforms=self.TRANSFORMS,
             validation_size=validation_size,
             shuffle_train=shuffle_train,
             random_state=random_state,
@@ -211,10 +212,6 @@ class ResNetDataLoader(PyTorchDataLoaderFactory):
 
 
 class InceptionV3DataLoader(PyTorchDataLoaderFactory):
-    MEAN = [0.485, 0.456, 0.406]
-    STD = [0.229, 0.224, 0.225]
-    IMAGE_SIZE = (224, 224)
-
     TRANSFORMS = transforms.Compose(
         [
             transforms.Resize(299),
@@ -235,10 +232,7 @@ class InceptionV3DataLoader(PyTorchDataLoaderFactory):
         super().__init__(
             batch_size=batch_size,
             num_workers=num_workers,
-            mean=self.MEAN,
-            std=self.STD,
-            tansforms=self.TRANSFORMS,
-            image_size=self.IMAGE_SIZE,
+            transforms=self.TRANSFORMS,
             validation_size=validation_size,
             shuffle_train=shuffle_train,
             random_state=random_state,

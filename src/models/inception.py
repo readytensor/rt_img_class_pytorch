@@ -1,57 +1,58 @@
-import torch
-from prediction.predictor_model import ImageClassifier
-from torch.nn import Linear
+from typing import Union
 from collections import OrderedDict
-
+from torch.nn import Linear
+from torchvision.models.googlenet import GoogLeNet
+from torchvision.models.inception import Inception3
 from torchvision.models import (
-    ResNet18_Weights,
-    resnet18,
-    ResNet34_Weights,
-    resnet34,
-    ResNet50_Weights,
-    resnet50,
-    ResNet101_Weights,
-    resnet101,
-    ResNet152_Weights,
-    resnet152,
+    GoogLeNet_Weights,
+    googlenet,
+    Inception_V3_Weights,
+    inception_v3,
 )
+from prediction.predictor_model import ImageClassifier
 
 
-def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Module:
+def get_model(
+    model_name: str, num_classes: int, pretrained=True, inference=False
+) -> Union[GoogLeNet, Inception3]:
     """
-    Retrieves a specified ResNet model by name, optionally loading it with pretrained weights,
-    and adjusts its fully connected layer to match the specified number of output classes.
+    Retrieves a specified model by name, with the option to load it with pretrained weights.
+    Adjusts the final fully connected layer to match the number of classes for the target task.
 
     Args:
-    - model_name (str): Name of the ResNet model to retrieve ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152').
-    - num_classes (int): Number of classes for the new fully connected layer.
-    - pretrained (bool, optional): Whether to load the model with pretrained weights. Defaults to True.
+    - model_name (str): Name of the model to retrieve ('inceptionV1' or 'inceptionV3').
+    - num_classes (int): Number of classes for the final classification layer.
+    - pretrained (bool): Whether to load the model with pretrained weights (default: True).
+    - inference (bool): Indicates if the model is used for inference, affecting aux_logits (default: False).
 
     Returns:
-    - torch.nn.Module: The modified ResNet model with the updated fully connected layer.
+    - Union[GoogLeNet, Inception3]: The modified model instance.
 
     Raises:
     - ValueError: If an unsupported model name is provided.
     """
     models = {
-        "resnet18": (ResNet18_Weights, resnet18),
-        "resnet34": (ResNet34_Weights, resnet34),
-        "resnet50": (ResNet50_Weights, resnet50),
-        "resnet101": (ResNet101_Weights, resnet101),
-        "resnet152": (ResNet152_Weights, resnet152),
+        "inceptionV1": (GoogLeNet_Weights.IMAGENET1K_V1, googlenet),
+        "inceptionV3": (Inception_V3_Weights.IMAGENET1K_V1, inception_v3),
     }
+
+    requires_aux = not ((model_name == "inceptionV1") and inference)
 
     if model_name in models.keys():
         weights = models[model_name][0]
         model = models[model_name][1]
-        model = model(weights=weights) if pretrained else model(pretrained=False)
+        model = (
+            model(weights=weights)
+            if pretrained
+            else model(pretrained=False, aux_logits=requires_aux)
+        )
         in_features = model.fc.in_features
         model.fc = Linear(in_features, num_classes)
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
 
-class ResNet(ImageClassifier):
+class Inception(ImageClassifier):
     def __init__(
         self,
         model_name: str,
@@ -82,7 +83,7 @@ class ResNet(ImageClassifier):
         )
 
     @classmethod
-    def load(cls, params: dict, model_state: OrderedDict) -> "ResNet":
+    def load(cls, params: dict, model_state: OrderedDict) -> "Inception":
         """
         Loads a pretrained model and its training configuration from a specified path.
 
@@ -90,16 +91,19 @@ class ResNet(ImageClassifier):
         - predictor_dir_path (str): Path to the directory with model's parameters and state.
 
         Returns:
-        - ResNet: A trainer object with the loaded model and training configuration.
+        - Inception: A trainer object with the loaded model and training configuration.
         """
         model_name = params["model_name"]
         num_classes = params["num_classes"]
         model = get_model(
-            model_name=model_name, num_classes=num_classes, pretrained=False
+            model_name=model_name,
+            num_classes=num_classes,
+            pretrained=False,
+            inference=True,
         )
 
         model.load_state_dict(model_state)
 
-        trainer = ResNet(**params)
+        trainer = Inception(**params)
         trainer.model = model
         return trainer

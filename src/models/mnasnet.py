@@ -1,57 +1,52 @@
 import torch
-from prediction.predictor_model import ImageClassifier
-from torch.nn import Linear
 from collections import OrderedDict
+from prediction.predictor_model import ImageClassifier
 
 from torchvision.models import (
-    ResNet18_Weights,
-    resnet18,
-    ResNet34_Weights,
-    resnet34,
-    ResNet50_Weights,
-    resnet50,
-    ResNet101_Weights,
-    resnet101,
-    ResNet152_Weights,
-    resnet152,
+    MNASNet0_5_Weights,
+    mnasnet0_5,
+    MNASNet1_0_Weights,
+    mnasnet1_0,
+    MNASNet1_3_Weights,
+    mnasnet1_3,
 )
 
 
 def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Module:
     """
-    Retrieves a specified ResNet model by name, optionally loading it with pretrained weights,
-    and adjusts its fully connected layer to match the specified number of output classes.
+    Retrieves a specified MNASNet model by name, optionally loading it with pretrained weights,
+    and adjusts its classifier for a given number of output classes.
 
     Args:
-    - model_name (str): Name of the ResNet model to retrieve ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152').
-    - num_classes (int): Number of classes for the new fully connected layer.
+    - model_name (str): Name of the MNASNet model to retrieve ('mnasnet0_5', 'mnasnet1_0', 'mnasnet1_3').
+    - num_classes (int): Number of classes for the final classification layer.
     - pretrained (bool, optional): Whether to load the model with pretrained weights. Defaults to True.
 
     Returns:
-    - torch.nn.Module: The modified ResNet model with the updated fully connected layer.
+    - torch.nn.Module: The modified MNASNet model with the updated classifier.
 
     Raises:
     - ValueError: If an unsupported model name is provided.
     """
     models = {
-        "resnet18": (ResNet18_Weights, resnet18),
-        "resnet34": (ResNet34_Weights, resnet34),
-        "resnet50": (ResNet50_Weights, resnet50),
-        "resnet101": (ResNet101_Weights, resnet101),
-        "resnet152": (ResNet152_Weights, resnet152),
+        "mnasnet0_5": (MNASNet0_5_Weights.IMAGENET1K_V1, mnasnet0_5),
+        "mnasnet1_0": (MNASNet1_0_Weights.IMAGENET1K_V1, mnasnet1_0),
+        "mnasnet1_3": (MNASNet1_3_Weights.IMAGENET1K_V1, mnasnet1_3),
     }
 
     if model_name in models.keys():
         weights = models[model_name][0]
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
-        in_features = model.fc.in_features
-        model.fc = Linear(in_features, num_classes)
+        model.classifier = torch.nn.Sequential(
+            torch.nn.Dropout(p=0.2),
+            torch.nn.Linear(model.classifier[1].in_features, num_classes),
+        )
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
 
-class ResNet(ImageClassifier):
+class MNASNet(ImageClassifier):
     def __init__(
         self,
         model_name: str,
@@ -82,7 +77,7 @@ class ResNet(ImageClassifier):
         )
 
     @classmethod
-    def load(cls, params: dict, model_state: OrderedDict) -> "ResNet":
+    def load(cls, params: dict, model_state: OrderedDict) -> "MNASNet":
         """
         Loads a pretrained model and its training configuration from a specified path.
 
@@ -90,16 +85,15 @@ class ResNet(ImageClassifier):
         - predictor_dir_path (str): Path to the directory with model's parameters and state.
 
         Returns:
-        - ResNet: A trainer object with the loaded model and training configuration.
+        - MNASNet: A trainer object with the loaded model and training configuration.
         """
         model_name = params["model_name"]
         num_classes = params["num_classes"]
         model = get_model(
             model_name=model_name, num_classes=num_classes, pretrained=False
         )
-
         model.load_state_dict(model_state)
 
-        trainer = ResNet(**params)
+        trainer = MNASNet(**params)
         trainer.model = model
         return trainer

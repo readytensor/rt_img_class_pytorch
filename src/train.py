@@ -1,9 +1,7 @@
 import os
 from config import paths
 from logger import get_logger, log_error
-from prediction.predictor_model import (
-    save_predictor_model,
-)
+from prediction.predictor_model import save_predictor_model, train_predictor_model
 from data_loader.data_loader import get_data_loader
 from utils import (
     read_json_as_dict,
@@ -11,8 +9,6 @@ from utils import (
     contains_subdirectories,
     ResourceTracker,
 )
-from models.resnet import train_predictor_model as train_resnet_model
-
 
 logger = get_logger(task_name="train")
 
@@ -79,7 +75,7 @@ def run_training(
 
             # use default hyperparameters to train model
             logger.info(f"Training model ({model_config['model_name']})...")
-            model = train_resnet_model(
+            model = train_predictor_model(
                 model_name=model_config["model_name"],
                 train_data=train_data_loader,
                 valid_data=valid_data_loader,

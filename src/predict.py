@@ -3,13 +3,12 @@ import pandas as pd
 
 from config import paths
 from logger import get_logger, log_error
-from prediction.predictor_model import predict_with_model
+from prediction.predictor_model import predict_with_model, load_predictor_model
 from utils import (
     save_dataframe_as_csv,
     ResourceTracker,
 )
 from data_loader.data_loader import load_data_loader_factory
-from models.resnet import load_predictor_model as load_resnet_predictor_model
 
 logger = get_logger(task_name="predict")
 
@@ -71,7 +70,7 @@ def run_batch_predictions(
             )
 
             logger.info("Loading predictor model...")
-            predictor_model = load_resnet_predictor_model(predictor_dir_path)
+            predictor_model = load_predictor_model(predictor_dir_path)
 
             logger.info("Making predictions...")
             predicted_labels, predicted_probabilities = predict_with_model(

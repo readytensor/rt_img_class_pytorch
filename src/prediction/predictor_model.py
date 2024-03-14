@@ -71,13 +71,12 @@ def get_lr_scheduler(scheduler: str) -> _LRScheduler:
 
 
 class ImageClassifier:
-    """ResNet18 Image Classifier.
-
+    """
     This class provides a consistent interface that can be used with other
-    Forecaster models.
+    image classifier models.
     """
 
-    MODEL_NAME = "ResNet18_Image_Classifier"
+    MODEL_NAME = "Image_Classifier"
 
     def __init__(
         self,
@@ -250,6 +249,38 @@ class ImageClassifier:
         joblib.dump(model_params, params_path)
         torch.save(self.model.state_dict(), model_path)
 
+    @classmethod
+    def load(cls, predictor_dir_path: str) -> "ImageClassifier":
+        """
+        Loads a pretrained model and its training configuration from a specified path.
+
+        Args:
+        - predictor_dir_path (str): Path to the directory with model's parameters and state.
+
+        Returns:
+        - ResNet: A trainer object with the loaded model and training configuration.
+        """
+        params_path = os.path.join(predictor_dir_path, "model_params.joblib")
+        model_path = os.path.join(predictor_dir_path, "model_state.pth")
+        params = joblib.load(params_path)
+        model_state = torch.load(model_path)
+        model_name = params["model_name"]
+
+        if model_name.startswith("resnet"):
+            from models.resnet import ResNet
+
+            return ResNet.load(params, model_state)
+
+        if model_name.startswith("inception"):
+            from models.inception import Inception
+
+            return Inception.load(params, model_state)
+
+        if model_name.startswith("mnasnet"):
+            from models.mnasnet import MNASNet
+
+            return MNASNet.load(params, model_state)
+
     def evaluate(self, test_data: DataLoader):
         """Evaluate the model and return the loss"""
         return get_loss(
@@ -259,6 +290,53 @@ class ImageClassifier:
     def __str__(self):
         # sort params alphabetically for unit test to run successfully
         return f"Model name: {self.MODEL_NAME}"
+
+
+def train_predictor_model(
+    model_name: str,
+    train_data: DataLoader,
+    hyperparameters: dict,
+    num_classes: int,
+    valid_data: DataLoader = None,
+) -> ImageClassifier:
+    """
+    Instantiate and train the classifier model.
+
+    Args:
+        train_data (DataLoader): The training data.
+        hyperparameters (dict): Hyperparameters for the model.
+        num_classes (int): Number of classes in the classificatiion problem.
+        valid_data (DataLoader): The validation data.
+
+    Returns:
+        'ImageClassifier': The ImageClassifier model
+    """
+
+    if model_name.startswith("resnet"):
+        from models.resnet import ResNet
+
+        constructor = ResNet
+
+    elif model_name.startswith("inception"):
+        from models.inception import Inception
+
+        constructor = Inception
+
+    elif model_name.startswith("mnasnet"):
+        from models.mnasnet import MNASNet
+
+        constructor = MNASNet
+
+    model = constructor(
+        model_name=model_name,
+        num_classes=num_classes,
+        **hyperparameters,
+    )
+    model.fit(
+        train_data=train_data,
+        valid_data=valid_data,
+    )
+    return model
 
 
 def predict_with_model(
@@ -289,6 +367,20 @@ def save_predictor_model(model: ImageClassifier, predictor_dir_path: str) -> Non
     if not os.path.exists(predictor_dir_path):
         os.makedirs(predictor_dir_path)
     model.save(predictor_dir_path)
+
+
+def load_predictor_model(predictor_dir_path: str) -> ImageClassifier:
+    """
+    Load the ImageClassifier model from disk.
+
+    Args:
+        predictor_dir_path (str): Dir path where model is saved.
+
+    Returns:
+        ImageClassifier: A new instance of the loaded ImageClassifier model.
+    """
+
+    return ImageClassifier.load(predictor_dir_path)
 
 
 def evaluate_predictor_model(model: ImageClassifier, test_data: DataLoader) -> float:
