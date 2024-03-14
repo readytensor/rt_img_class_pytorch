@@ -1,5 +1,5 @@
 {
-  "model_name": "inceptionV3",
+  "model_name": "resnet18",
   "seed_value": 42,
   "prediction_field_name": "prediction"
 }
