@@ -1,10 +1,12 @@
-# ResNet18 with Pre-Training for image classification in PyTorch
+# Image Classifier with Pre-Training in PyTorch
 
-ResNet18 Classifier for the Image Classification problem category as per Ready Tensor specifications.
+Image Classifier for the Image Classification problem category as per Ready Tensor specifications.
 
 ## Project Description
 
-This repository is a dockerized implementation of the re-usable image classification model. It is implemented in flexible way so that it can be used with any image classification dataset. The main purpose of this repository is to provide a complete example of a deep learning model implementation that is ready for deployment.
+Leveraging pre-trained models for image classification, this repository extends support to multiple architectures, including various ResNet versions, InceptionV1, InceptionV3, and MNASNet models. It's designed for ease of use and deployment, with minimal setup required for adapting to new datasets.
+
+
 The following are the requirements for using your data with this model:
 
 - The training and testing data must consist of multiple directories. Each directory represents a class in the classification problem with the relevant images inside the directory. See **/examples/mini_mnist.zip**
@@ -15,7 +17,7 @@ The following are the requirements for using your data with this model:
 
 Here are the highlights of this implementation: <br/>
 
-- A **ResNet18** algorithm built using **PyTorch**
+- **Supported models:** ResNet (18, 34, 50, 101, 152), InceptionV1, InceptionV3, MNASNet (0.5, 1.0, 1.3)  using **PyTorch**
   Additionally, the implementation contains the following features:
 - **Data Preprocessing**: Preprocessinig pipeline using **torchvision**.
 - **Error handling and logging**: Python's logging module is used for logging and key functions include exception handling.
@@ -84,6 +86,72 @@ In this section we cover the following:
    `docker run -v <path_to_mount_on_host>/model_inputs_outputs:/opt/model_inputs_outputs model_img predict` <br/>
    This will load the artifacts and create and save the predictions in a file called `predictions.csv` in the path `model_inputs_outputs/outputs/predictions/` in the bind mount.
 
+---
+
+## Configuration Files
+This project uses several configuration files to allow for easy customization and flexibility during training and prediction phases. Below, we describe the purpose and structure of these key configuration files.
+
+**`model_config.json`**
+You can specify your desired model through **`src/config/model_config.json`**. This file allows you to set various parameters, including the choice of the model architecture, seed value for reproducibility, and the field name for the predictions. Here is an example of the contents of model_config.json:
+```json
+{
+  "model_name": "inceptionV3",
+  "seed_value": 42,
+  "prediction_field_name": "prediction"
+}
+
+```
+Supported models include "resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "inceptionV1", "inceptionV3", "mnasnet0_5", "mnasnet1_0", and "mnasnet1_3".
+
+**`default_hyperparameters.json`**
+Contains the default set of hyperparameters for training the model.
+
+```json
+{
+  "lr": 0.1,
+  "optimizer": "adam",
+  "max_epochs": 10,
+  "early_stopping": false,
+  "early_stopping_patience": 3,
+  "early_stopping_delta": 0.05,
+  "lr_scheduler": "warmup_cosine_annealing",
+  "lr_scheduler_kwargs": {
+    "base_lr": 0.001,
+    "warmup_epochs": 2,
+    "num_epochs": 10
+  }
+}
+
+```
+
+- lr: Learning rate.
+- optimizer: Optimization algorithm.
+- max_epochs: Maximum number of epochs for training.
+- early_stopping: Enables/disables early stopping.
+- early_stopping_patience: Epochs to wait for improvement before stopping.
+- early_stopping_delta: Minimum change to qualify as an improvement.
+- lr_scheduler: Learning rate scheduling strategy.
+- lr_scheduler_kwargs: Additional settings for the learning rate scheduler.
+
+For detailed information, refer to the docstrings in the source code. 
+
+**`preprocessing.json`**
+Defines parameters for data preprocessing and augmentation.
+
+```json
+{
+  "batch_size": 256,
+  "num_workers": 0,
+  "validation_size": 0.0
+}
+```
+- batch_size: Number of samples processed in one iteration.
+- num_workers: Number of subprocesses for data loading.
+- validation_size: Portion of the dataset to use for validation.
+
+By editing these files, users can customize the model's architecture, training parameters, and preprocessing steps to suit their specific needs, ensuring optimal performance for their image classification tasks.
+
+---
 ## Requirements
 
 Dependencies for the main model implementation in `src` are listed in the file `requirements.txt`.
