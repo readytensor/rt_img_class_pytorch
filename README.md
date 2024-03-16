@@ -12,7 +12,7 @@ The following are the requirements for using your data with this model:
 - The training and testing data must consist of multiple directories. Each directory represents a class in the classification problem with the relevant images inside the directory. See **/examples/mini_mnist.zip**
 - Validation data are optional. Including a **validation** folder is possible. Alternatively, you can choose to create a validation set out of the training set by passing the validation set size parameter.
 - The train and test files across all different class directories must have unique names. The class directories must be named after the label of that class.
-- No preprocessing is requiered for the images. Necessary preprocessing steps will be applied for the data to match the format expected by the pre-trained model.
+- No preprocessing is required for the images. Necessary preprocessing steps will be applied for the data to match the format expected by the pre-trained model.
 ---
 
 Here are the highlights of this implementation: <br/>
