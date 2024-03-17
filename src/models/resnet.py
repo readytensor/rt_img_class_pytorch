@@ -1,6 +1,6 @@
 import torch
 from prediction.predictor_model import ImageClassifier
-from torch.nn import Linear
+from torch.nn import Linear, ReLU, Sequential
 from collections import OrderedDict
 
 from torchvision.models import (
@@ -46,7 +46,7 @@ def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Mo
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
         in_features = model.fc.in_features
-        model.fc = Linear(in_features, num_classes)
+        model.fc = Sequential[Linear(in_features, num_classes), ReLU()]
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
