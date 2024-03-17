@@ -46,7 +46,7 @@ def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Mo
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
         in_features = model.fc.in_features
-        model.fc = Sequential(Linear(in_features, num_classes), ReLU())
+        model.fc = Linear(in_features, num_classes)
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
