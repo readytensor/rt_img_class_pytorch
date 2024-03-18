@@ -2,7 +2,8 @@ import os
 import warnings
 import joblib
 import numpy as np
-from typing import Tuple
+import pandas as pd
+from typing import Tuple, Dict, List
 
 import torch
 from torch.optim import Optimizer
@@ -131,7 +132,7 @@ class ImageClassifier:
         else:
             self.lr_scheduler = None
 
-    def forward_backward(self, data: DataLoader):
+    def forward_backward(self, data: DataLoader) -> None:
         self.model.train()
         train_progress_bar = tqdm(
             total=len(data),
@@ -151,13 +152,14 @@ class ImageClassifier:
             train_progress_bar.update(1)
         train_progress_bar.close()
 
-    def fit(self, train_data: DataLoader, valid_data: DataLoader = None):
+    def fit(self, train_data: DataLoader, valid_data: DataLoader = None) -> pd.DataFrame:
         last_lr = self.lr
         self.model.to(device)
         early_stopper = EarlyStopping(
             patience=self.early_stopping_patience,
             delta=self.early_stopping_delta,
         )
+        loss_history = {"train_loss": [], "validation_loss": []} if valid_data is not None else {"train_loss": []}
         for epoch in range(self.max_epochs):
 
             self.forward_backward(train_data)
@@ -165,9 +167,11 @@ class ImageClassifier:
             if valid_data is not None:
                 val_loss = get_loss(self.model, valid_data, self.loss_function)
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
-            else:
-                train_loss = get_loss(self.model, train_data, self.loss_function)
-                logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
+                loss_history["validation"].append(val_loss)
+            
+            train_loss = get_loss(self.model, train_data, self.loss_function)
+            logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
+            loss_history["train"].append(train_loss)
 
             if self.lr_scheduler is not None:
                 loss = val_loss if valid_data is not None else train_loss
@@ -182,6 +186,8 @@ class ImageClassifier:
                 if early_stopper(loss):
                     logger.info(f"Early stopping after {epoch+1} epochs")
                     break
+
+        return pd.DataFrame(loss_history)
 
     def predict(self, data: DataLoader) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -298,7 +304,7 @@ def train_predictor_model(
     hyperparameters: dict,
     num_classes: int,
     valid_data: DataLoader = None,
-) -> ImageClassifier:
+) -> Tuple[ImageClassifier, pd.DataFrame]:
     """
     Instantiate and train the classifier model.
 
@@ -332,11 +338,11 @@ def train_predictor_model(
         num_classes=num_classes,
         **hyperparameters,
     )
-    model.fit(
+    loss_history = model.fit(
         train_data=train_data,
         valid_data=valid_data,
     )
-    return model
+    return model, loss_history
 
 
 def predict_with_model(

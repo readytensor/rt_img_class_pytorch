@@ -1,5 +1,5 @@
 {
   "batch_size": 64,
   "num_workers": 0,
-  "validation_size": 0.0
+  "validation_size": 0.15
 }

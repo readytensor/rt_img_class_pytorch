@@ -7,6 +7,7 @@ from utils import (
     read_json_as_dict,
     set_seeds,
     contains_subdirectories,
+    save_dataframe_as_csv,
     ResourceTracker,
 )
 
@@ -25,6 +26,7 @@ def run_training(
     predictor_dir_path: str = paths.PREDICTOR_DIR_PATH,
     default_hyperparameters_file_path: str = paths.DEFAULT_HYPERPARAMETERS_FILE_PATH,
     data_loader_save_path: str = paths.SAVED_DATA_LOADER_FILE_PATH,
+    loss_history_save_path: str = paths.LOSS_HISTORY_FILE_PATH,
 ) -> None:
     """
     Run the training process and saves model artifacts
@@ -37,6 +39,7 @@ def run_training(
         predictor_dir_path (str, optional): The directory path where to save the predictor model.
         default_hyperparameters_file_path (str, optional): The path of the default hyperparameters file.
         data_loader_save_path (str, optional): The directory path to where the data loader be save.
+        loss_history_save_path (str, optional): The file path to where the loss history be save.
     Returns:
         None
     """
@@ -75,7 +78,7 @@ def run_training(
 
             # use default hyperparameters to train model
             logger.info(f"Training model ({model_config['model_name']})...")
-            model = train_predictor_model(
+            model, loss_history = train_predictor_model(
                 model_name=model_config["model_name"],
                 train_data=train_data_loader,
                 valid_data=valid_data_loader,
@@ -90,6 +93,10 @@ def run_training(
         # save predictor model
         logger.info("Saving model...")
         save_predictor_model(model, predictor_dir_path)
+
+        # save loss history
+        logger.info("Saving loss history...")
+        save_dataframe_as_csv(loss_history, loss_history_save_path)
 
     except Exception as exc:
         err_msg = "Error occurred during training."

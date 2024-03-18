@@ -64,3 +64,5 @@ PREPROCESSING_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, "preprocessing.json")
 DEFAULT_HYPERPARAMETERS_FILE_PATH = os.path.join(
     CONFIG_DIR, "default_hyperparameters.json"
 )
+# Path to the file containing the loss history
+LOSS_HISTORY_FILE_PATH = os.path.join(MODEL_ARTIFACTS_PATH, "loss_history.csv")
