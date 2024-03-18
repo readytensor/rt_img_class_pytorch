@@ -3,7 +3,7 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict, List
+from typing import Tuple
 
 import torch
 from torch.optim import Optimizer
@@ -85,6 +85,7 @@ class ImageClassifier:
         lr: float = 0.01,
         optimizer: str = "adam",
         max_epochs: int = 10,
+        log_losses: str = "valid",
         early_stopping: bool = False,
         early_stopping_patience: int = 10,
         early_stopping_delta: float = 0.05,
@@ -100,6 +101,8 @@ class ImageClassifier:
         - lr (float): Learning rate for the optimizer. Default is 0.001.
         - optimizer (str): Name of the optimizer to use for training. Default is "adam". supported optimizers: {"adam", "sgd"}
         - max_epochs (int): Maximum number of training epochs. Default is 10.
+        - log_losses (str): Whether to log the losses. Default is "valid". supported values: {"train", "valid", "both"}. can be set to None.
+        setting this parameter to None will disable early stopping.
         - early_stopping (bool): Whether to enable early stopping. Default is False.
         - early_stopping_patience (int): Number of epochs with no improvement after which training will be stopped. Default is 10.
         - early_stopping_delta (float): Minimum change in the monitored quantity to qualify as an improvement. Default is 0.05.
@@ -114,6 +117,7 @@ class ImageClassifier:
         self.lr = lr
         self.optimizer_str = optimizer
         self.max_epochs = max_epochs
+        self.log_losses = log_losses
         self.num_classes = num_classes
         self.early_stopping = early_stopping
         self.early_stopping_delta = early_stopping_delta
@@ -152,38 +156,52 @@ class ImageClassifier:
             train_progress_bar.update(1)
         train_progress_bar.close()
 
-    def fit(self, train_data: DataLoader, valid_data: DataLoader = None) -> pd.DataFrame:
+    def fit(
+        self, train_data: DataLoader, valid_data: DataLoader = None
+    ) -> pd.DataFrame:
         last_lr = self.lr
         self.model.to(device)
         early_stopper = EarlyStopping(
             patience=self.early_stopping_patience,
             delta=self.early_stopping_delta,
         )
-        loss_history = {"train_loss": [], "validation_loss": []} if valid_data is not None else {"train_loss": []}
+        loss_history = {}
+        log_train_loss = self.log_losses == "train" or self.log_losses == "both"
+        log_val_loss = (
+            self.log_losses == "valid" or self.log_losses == "both"
+        ) and valid_data is not None
+        if log_train_loss:
+            loss_history["train_loss"] = []
+
+        if log_val_loss:
+            loss_history["validation_loss"] = []
+
         for epoch in range(self.max_epochs):
 
             self.forward_backward(train_data)
 
-            if valid_data is not None:
+            monitored_loss = None
+            if log_train_loss:
+                train_loss = get_loss(self.model, train_data, self.loss_function)
+                logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
+                loss_history["train_loss"].append(train_loss)
+                monitored_loss = train_loss
+
+            if log_val_loss:
                 val_loss = get_loss(self.model, valid_data, self.loss_function)
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
                 loss_history["validation_loss"].append(val_loss)
-            
-            train_loss = get_loss(self.model, train_data, self.loss_function)
-            logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
-            loss_history["train_loss"].append(train_loss)
+                monitored_loss = val_loss
 
             if self.lr_scheduler is not None:
-                loss = val_loss if valid_data is not None else train_loss
-                self.lr_scheduler.step(loss)
+                self.lr_scheduler.step(monitored_loss)
                 scheduler_lr = self.lr_scheduler.get_last_lr()[0]
                 if last_lr != scheduler_lr:
                     logger.info(f"Learning rate set to {scheduler_lr}")
                     last_lr = scheduler_lr
 
-            if self.early_stopping:
-                loss = val_loss if valid_data is not None else train_loss
-                if early_stopper(loss):
+            if self.early_stopping and monitored_loss is not None:
+                if early_stopper(monitored_loss):
                     logger.info(f"Early stopping after {epoch+1} epochs")
                     break
 
