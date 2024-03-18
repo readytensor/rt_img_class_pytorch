@@ -167,11 +167,11 @@ class ImageClassifier:
             if valid_data is not None:
                 val_loss = get_loss(self.model, valid_data, self.loss_function)
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
-                loss_history["validation"].append(val_loss)
+                loss_history["validation_loss"].append(val_loss)
             
             train_loss = get_loss(self.model, train_data, self.loss_function)
             logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
-            loss_history["train"].append(train_loss)
+            loss_history["train_loss"].append(train_loss)
 
             if self.lr_scheduler is not None:
                 loss = val_loss if valid_data is not None else train_loss
