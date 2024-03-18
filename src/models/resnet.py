@@ -1,6 +1,6 @@
 import torch
 from prediction.predictor_model import ImageClassifier
-from torch.nn import Linear, ReLU, Sequential
+from torch.nn import Linear
 from collections import OrderedDict
 
 from torchvision.models import (
@@ -59,6 +59,7 @@ class ResNet(ImageClassifier):
         lr: float = 0.01,
         optimizer: str = "adam",
         max_epochs: int = 10,
+        log_losses: str = "valid",
         early_stopping: bool = False,
         early_stopping_patience: int = 10,
         early_stopping_delta: float = 0.05,
@@ -73,6 +74,7 @@ class ResNet(ImageClassifier):
             lr=lr,
             optimizer=optimizer,
             max_epochs=max_epochs,
+            log_losses=log_losses,
             early_stopping=early_stopping,
             early_stopping_delta=early_stopping_delta,
             early_stopping_patience=early_stopping_patience,
