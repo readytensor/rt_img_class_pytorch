@@ -3,8 +3,8 @@
   "optimizer": "adam",
   "max_epochs": 50,
   "early_stopping": true,
-  "early_stopping_patience": 3,
-  "early_stopping_delta": 0.05,
+  "early_stopping_patience": 4,
+  "early_stopping_delta": 0.03,
   "lr_scheduler": "warmup_cosine_annealing",
   "log_losses": "both",
   "lr_scheduler_kwargs": {
