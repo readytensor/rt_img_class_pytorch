@@ -42,7 +42,7 @@ def get_model(
         weights = models[model_name][0]
         model = models[model_name][1]
         model = (
-            model(weights=weights)
+            model(weights=weights, transform_input=False)
             if pretrained
             else model(pretrained=False, aux_logits=requires_aux)
         )
