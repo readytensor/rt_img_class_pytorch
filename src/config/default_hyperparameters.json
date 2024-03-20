@@ -10,6 +10,6 @@
   "lr_scheduler_kwargs": {
     "base_lr": 0.001,
     "warmup_epochs": 2,
-    "num_epochs": 10
+    "num_epochs": 4
   }
 }
