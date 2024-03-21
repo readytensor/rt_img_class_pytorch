@@ -10,8 +10,8 @@
   "log_losses": "both",
   "lr_scheduler_kwargs": {
     "base_lr": 1e-5,
-    "warmup_epochs": 2,
-    "num_epochs": 4
+    "warmup_epochs": 5,
+    "num_epochs": 20
   },
   "optimizer_kwargs": {
     "momentum": 0.9
