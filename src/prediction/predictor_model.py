@@ -91,6 +91,7 @@ class ImageClassifier:
         early_stopping_delta: float = 0.05,
         lr_scheduler: str = None,
         lr_scheduler_kwargs: dict = None,
+        optimizer_kwargs: dict = {},
         **kwargs,
     ):
         """
@@ -109,6 +110,7 @@ class ImageClassifier:
         - lr_scheduler (str): Name of the learning rate scheduler to use. If None, no scheduler will be used. Default is None.
         supported schedulers: {"step", "exponential", "plateau", "cosine_annealing"}
         - lr_scheduler_kwargs (dict): Keyword arguments to pass to the learning rate scheduler constructor. Default is None.
+        - optimizer_kwargs (dict): Keyword arguments to pass to the optimizer constructor. Default is {}.
 
         Note:
         - The `lr_scheduler_kwargs` should contain any necessary arguments needed by the specified learning rate scheduler, excluding those arguments automatically determined by the training process, such as the optimizer.
@@ -127,7 +129,9 @@ class ImageClassifier:
         self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
 
-        self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
+        self.optimizer = get_optimizer(optimizer)(
+            self.model.parameters(), lr=lr, **optimizer_kwargs
+        )
         if self.lr_scheduler_str is not None:
             self.lr_scheduler = get_lr_scheduler(lr_scheduler)(
                 self.optimizer, **self.lr_scheduler_kwargs
