@@ -50,13 +50,10 @@ def get_model(
         model = model(weights=weights) if pretrained else model(pretrained=False)
         in_features = model.fc.in_features
 
-        if dropout > 0:
-            model.fc = Sequential(
-                torch.nn.Dropout(dropout),
-                Linear(in_features, num_classes),
-            )
-        else:
-            model.fc = Linear(in_features, num_classes)
+        model.fc = Sequential(
+            torch.nn.Dropout(dropout),
+            Linear(in_features, num_classes),
+        )
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
@@ -110,8 +107,12 @@ class ResNet(ImageClassifier):
         """
         model_name = params["model_name"]
         num_classes = params["num_classes"]
+        dropout = params.get("dropout", 0)
         model = get_model(
-            model_name=model_name, num_classes=num_classes, pretrained=False
+            model_name=model_name,
+            num_classes=num_classes,
+            pretrained=False,
+            dropout=dropout,
         )
 
         model.load_state_dict(model_state)
