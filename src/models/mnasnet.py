@@ -12,7 +12,9 @@ from torchvision.models import (
 )
 
 
-def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Module:
+def get_model(
+    model_name: str, num_classes: int, pretrained=True, dropout: float = 0.0
+) -> torch.nn.Module:
     """
     Retrieves a specified MNASNet model by name, optionally loading it with pretrained weights,
     and adjusts its classifier for a given number of output classes.
@@ -21,6 +23,7 @@ def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Mo
     - model_name (str): Name of the MNASNet model to retrieve ('mnasnet0_5', 'mnasnet1_0', 'mnasnet1_3').
     - num_classes (int): Number of classes for the final classification layer.
     - pretrained (bool, optional): Whether to load the model with pretrained weights. Defaults to True.
+    - dropout (float, optional): Dropout rate for the fully connected layer. Defaults to 0.0.
 
     Returns:
     - torch.nn.Module: The modified MNASNet model with the updated classifier.
@@ -38,10 +41,15 @@ def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Mo
         weights = models[model_name][0]
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
-        model.classifier = torch.nn.Sequential(
-            torch.nn.Dropout(p=0.2),
-            torch.nn.Linear(model.classifier[1].in_features, num_classes),
-        )
+        if dropout > 0:
+            model.classifier = torch.nn.Sequential(
+                torch.nn.Dropout(p=0.2),
+                torch.nn.Linear(model.classifier[1].in_features, num_classes),
+            )
+        else:
+            model.classifier = torch.nn.Linear(
+                model.classifier[1].in_features, num_classes
+            )
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
@@ -52,6 +60,7 @@ class MNASNet(ImageClassifier):
         model_name: str,
         num_classes: int,
         lr: float = 0.01,
+        dropout: float = 0.0,
         optimizer: str = "adam",
         max_epochs: int = 10,
         log_losses: str = "valid",
@@ -63,7 +72,10 @@ class MNASNet(ImageClassifier):
         **kwargs,
     ):
         self.model_name = model_name
-        self.model = get_model(model_name=model_name, num_classes=num_classes)
+        self.dropout = dropout
+        self.model = get_model(
+            model_name=model_name, num_classes=num_classes, dropout=dropout
+        )
         super().__init__(
             num_classes=num_classes,
             lr=lr,
