@@ -41,15 +41,10 @@ def get_model(
         weights = models[model_name][0]
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
-        if dropout > 0:
-            model.classifier = torch.nn.Sequential(
-                torch.nn.Dropout(p=0.2),
-                torch.nn.Linear(model.classifier[1].in_features, num_classes),
-            )
-        else:
-            model.classifier = torch.nn.Linear(
-                model.classifier[1].in_features, num_classes
-            )
+        model.classifier = torch.nn.Sequential(
+            torch.nn.Dropout(dropout),
+            torch.nn.Linear(model.classifier[1].in_features, num_classes),
+        )
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
@@ -103,8 +98,12 @@ class MNASNet(ImageClassifier):
         """
         model_name = params["model_name"]
         num_classes = params["num_classes"]
+        dropout = params.get("dropout", 0)
         model = get_model(
-            model_name=model_name, num_classes=num_classes, pretrained=False
+            model_name=model_name,
+            num_classes=num_classes,
+            pretrained=False,
+            dropout=dropout,
         )
         model.load_state_dict(model_state)
 
