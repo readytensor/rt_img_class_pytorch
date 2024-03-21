@@ -1,5 +1,5 @@
 {
-  "lr": 0.1,
+  "lr": 0.001,
   "optimizer": "adam",
   "max_epochs": 50,
   "dropout": 0.0,
@@ -9,7 +9,7 @@
   "lr_scheduler": "warmup_cosine_annealing",
   "log_losses": "both",
   "lr_scheduler_kwargs": {
-    "base_lr": 0.001,
+    "base_lr": 1e-5,
     "warmup_epochs": 2,
     "num_epochs": 4
   }
