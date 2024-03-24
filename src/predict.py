@@ -7,38 +7,11 @@ from prediction.predictor_model import predict_with_model, load_predictor_model
 from utils import (
     save_dataframe_as_csv,
     ResourceTracker,
+    create_predictions_dataframe,
 )
 from data_loader.data_loader import load_data_loader_factory
 
 logger = get_logger(task_name="predict")
-
-
-def create_predictions_dataframe(
-    ids: np.ndarray, probs: np.ndarray, predictions: np.ndarray, class_to_idx: dict
-) -> pd.DataFrame:
-    """
-    Creates a DataFrame containing predictions and their associated probabilities for each class.
-
-    Args:
-    - ids (np.ndarray): An array of identifiers for the samples.
-    - probs (np.ndarray): A 2D array where each row contains the probabilities for each class for a given sample.
-    - predictions (np.ndarray): An array of class indices predicted for each sample.
-    - class_to_idx (dict): A dictionary mapping class names to their respective indices.
-
-    Returns:
-    - pd.DataFrame: A DataFrame with the following columns:
-        - 'id': The identifier for each sample.
-        - One column for each class, containing the probability of that class for each sample. The columns are named after the class names.
-        - 'prediction': The predicted class name for each sample.
-    """
-    idx_to_class = {k: v for v, k in class_to_idx.items()}
-    encoded_targets = list(range(len(class_to_idx)))
-    prediction_df = pd.DataFrame({"id": ids})
-    prediction_df[encoded_targets] = probs
-    prediction_df["prediction"] = predictions
-    prediction_df["prediction"] = prediction_df["prediction"].map(idx_to_class)
-    prediction_df.rename(columns=idx_to_class, inplace=True)
-    return prediction_df
 
 
 def run_batch_predictions(

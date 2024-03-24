@@ -3,7 +3,7 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, Dict
 
 import torch
 from torch.optim import Optimizer
@@ -19,6 +19,8 @@ from torch.optim.lr_scheduler import (
     StepLR,
     _LRScheduler,
 )
+from pathlib import Path
+from utils import create_predictions_dataframe
 from torch_utils.lr_scheduler import WarmupCosineAnnealing
 from logger import get_logger
 from tqdm import tqdm
@@ -31,18 +33,6 @@ logger = get_logger(task_name="model")
 # Check for GPU availability
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 logger.info(f"Using device: {device}")
-
-
-def get_loss(model, data_loader, loss_function) -> float:
-    model.eval()
-    loss_total = 0
-    with torch.no_grad():
-        for data in data_loader:
-            X, y = data[0].to(device), data[1].to(device)
-            output = model(X)
-            loss = loss_function(output, y)
-            loss_total += loss.item()
-    return loss_total / len(data_loader)
 
 
 def get_optimizer(optimizer: str) -> Optimizer:
@@ -91,6 +81,7 @@ class ImageClassifier:
         early_stopping_delta: float = 0.05,
         lr_scheduler: str = None,
         lr_scheduler_kwargs: dict = None,
+        optimizer_kwargs: dict = {},
         **kwargs,
     ):
         """
@@ -109,6 +100,7 @@ class ImageClassifier:
         - lr_scheduler (str): Name of the learning rate scheduler to use. If None, no scheduler will be used. Default is None.
         supported schedulers: {"step", "exponential", "plateau", "cosine_annealing"}
         - lr_scheduler_kwargs (dict): Keyword arguments to pass to the learning rate scheduler constructor. Default is None.
+        - optimizer_kwargs (dict): Keyword arguments to pass to the optimizer constructor. Default is {}.
 
         Note:
         - The `lr_scheduler_kwargs` should contain any necessary arguments needed by the specified learning rate scheduler, excluding those arguments automatically determined by the training process, such as the optimizer.
@@ -127,7 +119,9 @@ class ImageClassifier:
         self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
 
-        self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
+        self.optimizer = get_optimizer(optimizer)(
+            self.model.parameters(), lr=lr, **optimizer_kwargs
+        )
         if self.lr_scheduler_str is not None:
             self.lr_scheduler = get_lr_scheduler(lr_scheduler)(
                 self.optimizer, **self.lr_scheduler_kwargs
@@ -158,7 +152,7 @@ class ImageClassifier:
 
     def fit(
         self, train_data: DataLoader, valid_data: DataLoader = None
-    ) -> pd.DataFrame:
+    ) -> Dict[str, pd.DataFrame]:
         last_lr = self.lr
         self.model.to(device)
         early_stopper = EarlyStopping(
@@ -182,13 +176,19 @@ class ImageClassifier:
 
             monitored_loss = None
             if log_train_loss:
-                train_loss = get_loss(self.model, train_data, self.loss_function)
+                train_p_results = self.predict(train_data, self.loss_function)
+                train_predictions = train_p_results["predictions"]
+                train_probs = train_p_results["probabilities"]
+                train_loss = train_p_results["loss"]
                 logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
                 loss_history["train_loss"].append(train_loss)
                 monitored_loss = train_loss
 
             if log_val_loss:
-                val_loss = get_loss(self.model, valid_data, self.loss_function)
+                val_p_results = self.predict(valid_data, self.loss_function)
+                val_predictions = val_p_results["predictions"]
+                val_probs = val_p_results["probabilities"]
+                val_loss = val_p_results["loss"]
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
                 loss_history["validation_loss"].append(val_loss)
                 monitored_loss = val_loss
@@ -205,9 +205,30 @@ class ImageClassifier:
                     logger.info(f"Early stopping after {epoch+1} epochs")
                     break
 
-        return pd.DataFrame(loss_history)
+        results = {"loss_history": pd.DataFrame(loss_history)}
 
-    def predict(self, data: DataLoader) -> Tuple[np.ndarray, np.ndarray]:
+        if log_train_loss:
+            image_names = [Path(i[0]).name for i in train_data.dataset.imgs]
+            train_predictions_df = create_predictions_dataframe(
+                ids=image_names,
+                probs=train_probs,
+                predictions=train_predictions,
+                class_to_idx=train_data.dataset.class_to_idx,
+            )
+            results["train_predictions"] = train_predictions_df
+
+        if log_val_loss:
+            image_names = [Path(i[0]).name for i in valid_data.dataset.imgs]
+            val_predictions_df = create_predictions_dataframe(
+                ids=image_names,
+                probs=val_probs,
+                predictions=val_predictions,
+                class_to_idx=valid_data.dataset.class_to_idx,
+            )
+            results["validation_predictions"] = val_predictions_df
+        return results
+
+    def predict(self, data: DataLoader, loss_function=None) -> Dict:
         """
         Predicts the class labels and probabilities for the given data.
 
@@ -215,10 +236,11 @@ class ImageClassifier:
             data (DataLoader): The input data.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: (Predicted class labels, Probabilities).
+            Dict: A dictionary containing the predicted class labels, probabilities and optionally the loss.
         """
         self.model.eval()
         self.model.to(device)
+        loss_total = 0
         with torch.no_grad():
             all_labels, all_predicted, all_probs = (
                 np.array([]),
@@ -240,8 +262,15 @@ class ImageClassifier:
                     if all_probs.size
                     else probs.cpu().numpy()
                 )
+                if loss_function is not None:
+                    loss = loss_function(outputs, labels)
+                    loss_total += loss.item()
 
-        return all_predicted, all_probs
+        results = {"predictions": all_predicted, "probabilities": all_probs}
+        if loss_function is not None:
+            results["loss"] = loss_total / len(data)
+
+        return results
 
     def save(self, predictor_dir_path: str) -> None:
         """
@@ -307,9 +336,9 @@ class ImageClassifier:
 
     def evaluate(self, test_data: DataLoader):
         """Evaluate the model and return the loss"""
-        return get_loss(
-            self.model, data_loader=test_data, loss_function=self.loss_function
-        )
+        return self.predict(data_loader=test_data, loss_function=self.loss_function)[
+            "loss"
+        ]
 
     def __str__(self):
         # sort params alphabetically for unit test to run successfully
@@ -322,7 +351,7 @@ def train_predictor_model(
     hyperparameters: dict,
     num_classes: int,
     valid_data: DataLoader = None,
-) -> Tuple[ImageClassifier, pd.DataFrame]:
+) -> Tuple[ImageClassifier, Dict[str, pd.DataFrame]]:
     """
     Instantiate and train the classifier model.
 
@@ -356,11 +385,11 @@ def train_predictor_model(
         num_classes=num_classes,
         **hyperparameters,
     )
-    loss_history = model.fit(
+    train_info = model.fit(
         train_data=train_data,
         valid_data=valid_data,
     )
-    return model, loss_history
+    return model, train_info
 
 
 def predict_with_model(
@@ -376,8 +405,8 @@ def predict_with_model(
     Returns:
         Tuple[np.ndarray, np.ndarray]: (predicted class labels, predicted class probabilites).
     """
-    labels, probabilites = model.predict(test_data)
-    return labels, probabilites
+    results = model.predict(test_data)
+    return results["predictions"], results["probabilities"]
 
 
 def save_predictor_model(model: ImageClassifier, predictor_dir_path: str) -> None:

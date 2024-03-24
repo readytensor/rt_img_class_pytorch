@@ -27,6 +27,8 @@ def run_training(
     default_hyperparameters_file_path: str = paths.DEFAULT_HYPERPARAMETERS_FILE_PATH,
     data_loader_save_path: str = paths.SAVED_DATA_LOADER_FILE_PATH,
     loss_history_save_path: str = paths.LOSS_HISTORY_FILE_PATH,
+    train_predictions_save_path: str = paths.TRAIN_PREDICTIONS_FILE_PATH,
+    validation_predictions_save_path: str = paths.VAL_PREDICTIONS_FILE_PATH,
 ) -> None:
     """
     Run the training process and saves model artifacts
@@ -40,6 +42,8 @@ def run_training(
         default_hyperparameters_file_path (str, optional): The path of the default hyperparameters file.
         data_loader_save_path (str, optional): The directory path to where the data loader be save.
         loss_history_save_path (str, optional): The file path to where the loss history be save.
+        train_predictions_save_path (str, optional): The file path to where the train predictions be save.
+        validation_predictions_save_path (str, optional): The file path to where the validation predictions be save.
     Returns:
         None
     """
@@ -78,7 +82,7 @@ def run_training(
 
             # use default hyperparameters to train model
             logger.info(f"Training model ({model_config['model_name']})...")
-            model, loss_history = train_predictor_model(
+            model, history = train_predictor_model(
                 model_name=model_config["model_name"],
                 train_data=train_data_loader,
                 valid_data=valid_data_loader,
@@ -94,9 +98,21 @@ def run_training(
         logger.info("Saving model...")
         save_predictor_model(model, predictor_dir_path)
 
-        # save loss history
         logger.info("Saving loss history...")
-        save_dataframe_as_csv(loss_history, loss_history_save_path)
+        save_dataframe_as_csv(history["loss_history"], loss_history_save_path)
+
+        train_predictions = history.get("train_predictions", None)
+        if train_predictions is not None:
+            logger.info("Saving train predictions...")
+            save_dataframe_as_csv(train_predictions, train_predictions_save_path)
+
+        validation_predictions = history.get("validation_predictions", None)
+        if validation_predictions is not None:
+
+            logger.info("Saving validation predictions...")
+            save_dataframe_as_csv(
+                validation_predictions, validation_predictions_save_path
+            )
 
     except Exception as exc:
         err_msg = "Error occurred during training."

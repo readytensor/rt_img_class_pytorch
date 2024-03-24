@@ -6,7 +6,7 @@ import psutil
 import threading
 import numpy as np
 import pandas as pd
-import torch as T
+import torch
 from typing import Any, Dict, List, Tuple, Union
 
 
@@ -122,11 +122,11 @@ def set_seeds(seed_value: int) -> None:
         os.environ["PYTHONHASHSEED"] = str(seed_value)
         random.seed(seed_value)
         np.random.seed(seed_value)
-        T.manual_seed(seed_value)
-        T.cuda.manual_seed(seed_value)
-        T.cuda.manual_seed_all(seed_value)  # For multi-GPU setups
-        T.backends.cudnn.deterministic = True
-        T.backends.cudnn.benchmark = False
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value)  # For multi-GPU setups
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
     else:
         raise ValueError(f"Invalid seed value: {seed_value}. Cannot set seeds.")
 
@@ -221,6 +221,34 @@ def save_json(file_path_and_name: str, data: Any) -> None:
         )
 
 
+def create_predictions_dataframe(
+    ids: np.ndarray, probs: np.ndarray, predictions: np.ndarray, class_to_idx: dict
+) -> pd.DataFrame:
+    """
+    Creates a DataFrame containing predictions and their associated probabilities for each class.
+
+    Args:
+    - ids (np.ndarray): An array of identifiers for the samples.
+    - probs (np.ndarray): A 2D array where each row contains the probabilities for each class for a given sample.
+    - predictions (np.ndarray): An array of class indices predicted for each sample.
+    - class_to_idx (dict): A dictionary mapping class names to their respective indices.
+
+    Returns:
+    - pd.DataFrame: A DataFrame with the following columns:
+        - 'id': The identifier for each sample.
+        - One column for each class, containing the probability of that class for each sample. The columns are named after the class names.
+        - 'prediction': The predicted class name for each sample.
+    """
+    idx_to_class = {k: v for v, k in class_to_idx.items()}
+    encoded_targets = list(range(len(class_to_idx)))
+    prediction_df = pd.DataFrame({"id": ids})
+    prediction_df[encoded_targets] = probs
+    prediction_df["prediction"] = predictions
+    prediction_df["prediction"] = prediction_df["prediction"].map(idx_to_class)
+    prediction_df.rename(columns=idx_to_class, inplace=True)
+    return prediction_df
+
+
 def make_serializable(obj: Any) -> Union[int, float, List[Union[int, float]], Any]:
     """
     Converts a given object into a serializable format.
@@ -259,12 +287,65 @@ def get_peak_memory_usage() -> float:
     """
     Returns the peak memory usage by current cuda device (in MB) if available
     """
-    if not T.cuda.is_available():
+    if not torch.cuda.is_available():
         return None
 
-    current_device = T.cuda.current_device()
-    peak_memory = T.cuda.max_memory_allocated(current_device)
+    current_device = torch.cuda.current_device()
+    peak_memory = torch.cuda.max_memory_allocated(current_device)
     return peak_memory / (1024 * 1024)
+
+
+class MemoryMonitor:
+    initial_memory = None
+    peak_memory = 0  # Class variable to store peak memory usage
+
+    def __init__(self, interval=20.0, logger=print):
+        self.interval = interval
+        self.logger = logger or print
+        self.running = False
+        self.thread = threading.Thread(target=self.monitor_loop)
+
+    def monitor_memory(self):
+        process = psutil.Process(os.getpid())
+        total_memory = process.memory_info().rss
+
+        # Check if the current memory usage is a new peak and update accordingly
+        MemoryMonitor.peak_memory = max(MemoryMonitor.peak_memory, total_memory)
+        if MemoryMonitor.initial_memory is None:
+            MemoryMonitor.initial_memory = MemoryMonitor.peak_memory
+
+    def monitor_loop(self):
+        """Runs the monitoring process in a loop."""
+        while self.running:
+            self.monitor_memory()
+            time.sleep(self.interval)
+
+    def _schedule_monitor(self):
+        """Internal method to schedule the next execution"""
+        self.monitor_memory()
+        # Only reschedule if the timer has not been canceled
+        if self.timer is not None:
+            self.timer = threading.Timer(self.interval, self._schedule_monitor)
+            self.timer.start()
+
+    def start(self):
+        """Starts the memory monitoring."""
+        if not self.running:
+            self.running = True
+            self.thread.start()
+
+    def stop(self):
+        """Stops the periodic monitoring"""
+        self.running = False
+        self.thread.join()  # Wait for the monitoring thread to finish
+        self.logger.info(
+            f"CPU Memory allocated (peak): {(MemoryMonitor.peak_memory - MemoryMonitor.initial_memory)/ (1024**2):.2f} MB"
+        )
+
+    @classmethod
+    def get_peak_memory(cls):
+        """Returns the peak memory usage"""
+        return cls.peak_memory
 
 
 class ResourceTracker(object):
@@ -279,9 +360,9 @@ class ResourceTracker(object):
 
     def __enter__(self):
         self.start_time = time.time()
-        if T.cuda.is_available():
-            T.cuda.reset_peak_memory_stats()  # Reset CUDA memory stats
-            T.cuda.empty_cache()  # Clear CUDA cache
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()  # Reset CUDA memory stats
+            torch.cuda.empty_cache()  # Clear CUDA cache
 
         self.monitor.start()
         return self
@@ -296,55 +377,3 @@ class ResourceTracker(object):
         elapsed_time = self.end_time - self.start_time
 
         self.logger.info(f"Execution time: {elapsed_time:.2f} seconds")
-
-
-class MemoryMonitor:
-    peak_memory = 0  # Class variable to store peak memory usage
-
-    def __init__(self, interval=20.0, logger=print):
-        self.interval = interval  # Time between executions in seconds
-        self.timer = None  # Placeholder for the timer object
-        self.logger = logger
-        self.lock = threading.Lock()  # Lock for thread-safe updates to class variables
-
-    def monitor_memory(self):
-        process = psutil.Process(os.getpid())
-        children = process.children(recursive=True)
-        total_memory = process.memory_info().rss
-
-        for child in children:
-            total_memory += child.memory_info().rss
-
-        with self.lock:
-            # Check if the current memory usage is a new peak and update accordingly
-            MemoryMonitor.peak_memory = max(MemoryMonitor.peak_memory, total_memory)
-
-    def _schedule_monitor(self):
-        """Internal method to execute monitor_memory and schedule the next execution"""
-        self.monitor_memory()
-        self.schedule_next()
-
-    def schedule_next(self):
-        """Schedules the next execution of the monitor task"""
-        if not self.timer or not self.timer.is_alive():
-            self.timer = threading.Timer(self.interval, self._schedule_monitor)
-            self.timer.start()
-
-    def start(self):
-        """Starts the periodic monitoring"""
-        if not self.timer or not self.timer.is_alive():
-            threading.Thread(target=self._schedule_monitor).start()
-
-    def stop(self):
-        """Stops the periodic monitoring"""
-        if self.timer and self.timer.is_alive():
-            self.timer.cancel()
-            self.timer = None
-        self.logger.info(
-            f"CPU Memory allocated (peak): {MemoryMonitor.peak_memory / (1024**2):.2f} MB"
-        )
-
-    @classmethod
-    def get_peak_memory(cls):
-        """Returns the peak memory usage"""
-        return cls.peak_memory

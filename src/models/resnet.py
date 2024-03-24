@@ -1,6 +1,6 @@
 import torch
 from prediction.predictor_model import ImageClassifier
-from torch.nn import Linear
+from torch.nn import Linear, Sequential
 from collections import OrderedDict
 
 from torchvision.models import (
@@ -17,7 +17,9 @@ from torchvision.models import (
 )
 
 
-def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Module:
+def get_model(
+    model_name: str, num_classes: int, pretrained=True, dropout: float = 0.0
+) -> torch.nn.Module:
     """
     Retrieves a specified ResNet model by name, optionally loading it with pretrained weights,
     and adjusts its fully connected layer to match the specified number of output classes.
@@ -26,6 +28,7 @@ def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Mo
     - model_name (str): Name of the ResNet model to retrieve ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152').
     - num_classes (int): Number of classes for the new fully connected layer.
     - pretrained (bool, optional): Whether to load the model with pretrained weights. Defaults to True.
+    - dropout (float, optional): Dropout rate for the fully connected layer. Defaults to 0.0.
 
     Returns:
     - torch.nn.Module: The modified ResNet model with the updated fully connected layer.
@@ -46,7 +49,11 @@ def get_model(model_name: str, num_classes: int, pretrained=True) -> torch.nn.Mo
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
         in_features = model.fc.in_features
-        model.fc = Linear(in_features, num_classes)
+
+        model.fc = Sequential(
+            torch.nn.Dropout(dropout),
+            Linear(in_features, num_classes),
+        )
         return model
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
@@ -57,6 +64,7 @@ class ResNet(ImageClassifier):
         model_name: str,
         num_classes: int,
         lr: float = 0.01,
+        dropout: float = 0.0,
         optimizer: str = "adam",
         max_epochs: int = 10,
         log_losses: str = "valid",
@@ -68,7 +76,10 @@ class ResNet(ImageClassifier):
         **kwargs,
     ):
         self.model_name = model_name
-        self.model = get_model(model_name=model_name, num_classes=num_classes)
+        self.droupout = dropout
+        self.model = get_model(
+            model_name=model_name, num_classes=num_classes, dropout=dropout
+        )
         super().__init__(
             num_classes=num_classes,
             lr=lr,
@@ -96,8 +107,12 @@ class ResNet(ImageClassifier):
         """
         model_name = params["model_name"]
         num_classes = params["num_classes"]
+        dropout = params.get("dropout", 0)
         model = get_model(
-            model_name=model_name, num_classes=num_classes, pretrained=False
+            model_name=model_name,
+            num_classes=num_classes,
+            pretrained=False,
+            dropout=dropout,
         )
 
         model.load_state_dict(model_state)
