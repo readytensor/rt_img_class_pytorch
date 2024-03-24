@@ -14,6 +14,7 @@ def get_logger(task_name: str) -> logging.Logger:
     """
     logger = logging.getLogger(task_name)
     logger.setLevel(logging.INFO)
+    logger.propagate = False
 
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 
@@ -39,9 +40,7 @@ def log_error(message: str, error: Exception, error_fpath: str) -> None:
         file.write(err_msg)
         file.write("\n")
         traceback_msg = "".join(
-            traceback.format_exception(
-                type(error), value=error, tb=error.__traceback__
-            )
+            traceback.format_exception(type(error), value=error, tb=error.__traceback__)
         )
         file.write(traceback_msg)
 
