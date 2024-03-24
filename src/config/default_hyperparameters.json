@@ -5,12 +5,12 @@
   "dropout": 0.3,
   "early_stopping": true,
   "early_stopping_patience": 6,
-  "early_stopping_delta": 0.05,
+  "early_stopping_delta": 0.1,
   "lr_scheduler": "warmup_cosine_annealing",
   "log_losses": "both",
   "lr_scheduler_kwargs": {
-    "base_lr": 0.001,
+    "base_lr": 0.01,
     "warmup_epochs": 2,
-    "num_epochs": 10
+    "num_epochs": 50
   }
 }
