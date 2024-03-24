@@ -151,7 +151,11 @@ class ImageClassifier:
         train_progress_bar.close()
 
     def fit(
-        self, train_data: DataLoader, valid_data: DataLoader = None
+        self,
+        train_data: DataLoader,
+        valid_data: DataLoader = None,
+        train_images_names=None,
+        valid_images_names=None,
     ) -> Dict[str, pd.DataFrame]:
         last_lr = self.lr
         self.model.to(device)
@@ -208,9 +212,8 @@ class ImageClassifier:
         results = {"loss_history": pd.DataFrame(loss_history)}
 
         if log_train_loss:
-            image_names = [Path(i[0]).name for i in train_data.dataset.imgs]
             train_predictions_df = create_predictions_dataframe(
-                ids=image_names,
+                ids=train_images_names,
                 probs=train_probs,
                 predictions=train_predictions,
                 class_to_idx=train_data.dataset.class_to_idx,
@@ -218,9 +221,8 @@ class ImageClassifier:
             results["train_predictions"] = train_predictions_df
 
         if log_val_loss:
-            image_names = [Path(i[0]).name for i in valid_data.dataset.imgs]
             val_predictions_df = create_predictions_dataframe(
-                ids=image_names,
+                ids=valid_images_names,
                 probs=val_probs,
                 predictions=val_predictions,
                 class_to_idx=valid_data.dataset.class_to_idx,
@@ -348,18 +350,23 @@ class ImageClassifier:
 def train_predictor_model(
     model_name: str,
     train_data: DataLoader,
+    train_images_names: list,
     hyperparameters: dict,
     num_classes: int,
     valid_data: DataLoader = None,
+    valid_images_names: list = None,
 ) -> Tuple[ImageClassifier, Dict[str, pd.DataFrame]]:
     """
     Instantiate and train the classifier model.
 
     Args:
+        model_name (str): The name of the model to train.
         train_data (DataLoader): The training data.
+        train_images_names (list): The list of image names in the training data.
         hyperparameters (dict): Hyperparameters for the model.
         num_classes (int): Number of classes in the classificatiion problem.
         valid_data (DataLoader): The validation data.
+        valid_images_names (list): The list of image names in the validation data.
 
     Returns:
         'ImageClassifier': The ImageClassifier model
@@ -388,6 +395,8 @@ def train_predictor_model(
     train_info = model.fit(
         train_data=train_data,
         valid_data=valid_data,
+        train_images_names=train_images_names,
+        valid_images_names=valid_images_names,
     )
     return model, train_info
 

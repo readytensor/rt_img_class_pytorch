@@ -77,6 +77,8 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                 shuffle=self.shuffle_train,
                 num_workers=self.num_workers,
             )
+            self.train_image_names = [Path(i[0]).name for i in dataset.imgs]
+            self.val_image_names = [Path(i[0]).name for i in validation_dataset.imgs]
         else:
             if self.validation_size > 0:
                 # Create validation split out of train split
@@ -109,6 +111,12 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                     shuffle=False,
                     num_workers=self.num_workers,
                 )
+                self.train_image_names = [
+                    Path(dataset.imgs[i][0]).name for i in train_indices
+                ]
+                self.val_image_names = [
+                    Path(dataset.imgs[i][0]).name for i in val_indices
+                ]
             else:
                 # No validation data to use
                 val_loader = None
@@ -118,6 +126,8 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                     shuffle=self.shuffle_train,
                     num_workers=self.num_workers,
                 )
+                self.train_image_names = [Path(i[0]).name for i in dataset.imgs]
+                self.val_image_names = None
         return train_loader, val_loader
 
     def create_test_data_loader(self, data_dir_path: str):

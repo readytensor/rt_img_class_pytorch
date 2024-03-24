@@ -85,6 +85,8 @@ def run_training(
             model, history = train_predictor_model(
                 model_name=model_config["model_name"],
                 train_data=train_data_loader,
+                train_images_names=data_loader_factory.train_image_names,
+                valid_images_names=data_loader_factory.val_image_names,
                 valid_data=valid_data_loader,
                 num_classes=data_loader_factory.num_classes,
                 hyperparameters=default_hyperparameters,
