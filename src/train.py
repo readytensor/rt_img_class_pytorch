@@ -10,6 +10,7 @@ from utils import (
     save_dataframe_as_csv,
     ResourceTracker,
 )
+from utils import create_predictions_dataframe
 
 logger = get_logger(task_name="train")
 
@@ -85,8 +86,6 @@ def run_training(
             model, history = train_predictor_model(
                 model_name=model_config["model_name"],
                 train_data=train_data_loader,
-                train_images_names=data_loader_factory.train_image_names,
-                valid_images_names=data_loader_factory.val_image_names,
                 valid_data=valid_data_loader,
                 num_classes=data_loader_factory.num_classes,
                 hyperparameters=default_hyperparameters,
@@ -103,14 +102,23 @@ def run_training(
         logger.info("Saving loss history...")
         save_dataframe_as_csv(history["loss_history"], loss_history_save_path)
 
-        train_predictions = history.get("train_predictions", None)
-        if train_predictions is not None:
+        if history.get("train_predictions", None) is not None:
+            train_predictions = create_predictions_dataframe(
+                ids=data_loader_factory.train_image_names,
+                probs=history["train_probabilities"],
+                predictions=history["train_predictions"],
+                class_to_idx=data_loader_factory.class_to_idx,
+            )
             logger.info("Saving train predictions...")
             save_dataframe_as_csv(train_predictions, train_predictions_save_path)
 
-        validation_predictions = history.get("validation_predictions", None)
-        if validation_predictions is not None:
-
+        if history.get("validation_predictions", None) is not None:
+            validation_predictions = create_predictions_dataframe(
+                ids=data_loader_factory.val_image_names,
+                probs=history["validation_probabilities"],
+                predictions=history["validation_predictions"],
+                class_to_idx=data_loader_factory.class_to_idx,
+            )
             logger.info("Saving validation predictions...")
             save_dataframe_as_csv(
                 validation_predictions, validation_predictions_save_path
