@@ -66,3 +66,13 @@ DEFAULT_HYPERPARAMETERS_FILE_PATH = os.path.join(
 )
 # Path to the file containing the loss history
 LOSS_HISTORY_FILE_PATH = os.path.join(MODEL_ARTIFACTS_PATH, "loss_history.csv")
+
+# Path to the file containing the train predictions
+TRAIN_PREDICTIONS_FILE_PATH = os.path.join(
+    MODEL_ARTIFACTS_PATH, "train_predictions.csv"
+)
+
+# Path to the file containing the validation predictions
+VAL_PREDICTIONS_FILE_PATH = os.path.join(
+    MODEL_ARTIFACTS_PATH, "validation_predictions.csv"
+)
