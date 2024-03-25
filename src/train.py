@@ -108,6 +108,12 @@ def run_training(
                 probs=history["train_probabilities"],
                 predictions=history["train_predictions"],
                 class_to_idx=data_loader_factory.class_to_idx,
+                truth_labels=list(
+                    zip(
+                        data_loader_factory.train_image_names,
+                        data_loader_factory.train_image_labels,
+                    )
+                ),
             )
             logger.info("Saving train predictions...")
             save_dataframe_as_csv(train_predictions, train_predictions_save_path)
@@ -118,6 +124,12 @@ def run_training(
                 probs=history["validation_probabilities"],
                 predictions=history["validation_predictions"],
                 class_to_idx=data_loader_factory.class_to_idx,
+                truth_labels=list(
+                    zip(
+                        data_loader_factory.val_image_names,
+                        data_loader_factory.val_image_labels,
+                    )
+                ),
             )
             logger.info("Saving validation predictions...")
             save_dataframe_as_csv(
