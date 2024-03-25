@@ -7,5 +7,9 @@
   "early_stopping_patience": 6,
   "early_stopping_delta": 0.1,
   "lr_scheduler": "plateau",
-  "log_losses": "both"
+  "log_losses": "both",
+  "lr_scheduler_kwargs": {
+    "patience": 2,
+    "factor": 0.1
+  }
 }
