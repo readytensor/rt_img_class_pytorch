@@ -60,6 +60,8 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
         self.num_classes = len(dataset.classes)
         self.class_names = dataset.classes
 
+        idx_to_class = {v: k for k, v in self.class_to_idx.items()}
+
         # if validation data is given to us directly then load it
         if validation_dir_path is not None:
             validation_dataset = ImageFolder(
@@ -77,6 +79,11 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                 shuffle=self.shuffle_train,
                 num_workers=self.num_workers,
             )
+            self.train_image_names = [Path(i[0]).name for i in dataset.imgs]
+            self.val_image_names = [Path(i[0]).name for i in validation_dataset.imgs]
+            self.train_image_labels = [i[1] for i in dataset.imgs]
+            self.val_image_labels = [i[1] for i in validation_dataset.imgs]
+
         else:
             if self.validation_size > 0:
                 # Create validation split out of train split
@@ -109,6 +116,14 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                     shuffle=False,
                     num_workers=self.num_workers,
                 )
+                self.train_image_names = [
+                    Path(dataset.imgs[i][0]).name for i in train_indices
+                ]
+                self.val_image_names = [
+                    Path(dataset.imgs[i][0]).name for i in val_indices
+                ]
+                self.train_image_labels = [dataset.imgs[i][1] for i in train_indices]
+                self.val_image_labels = [dataset.imgs[i][1] for i in val_indices]
             else:
                 # No validation data to use
                 val_loader = None
@@ -118,6 +133,14 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                     shuffle=self.shuffle_train,
                     num_workers=self.num_workers,
                 )
+                self.train_image_names = [Path(i[0]).name for i in dataset.imgs]
+                self.val_image_names = None
+                self.train_image_labels = [i[1] for i in dataset.imgs]
+                self.val_image_labels = None
+
+        self.train_image_labels = [idx_to_class[i] for i in self.train_image_labels]
+        if self.val_image_labels is not None:
+            self.val_image_labels = [idx_to_class[i] for i in self.val_image_labels]
         return train_loader, val_loader
 
     def create_test_data_loader(self, data_dir_path: str):
