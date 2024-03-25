@@ -171,6 +171,7 @@ class ImageClassifier:
             loss_history["validation_loss"] = []
 
         for epoch in range(self.max_epochs):
+            self.model.train()
 
             self.forward_backward(train_data)
 
