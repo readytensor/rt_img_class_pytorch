@@ -376,6 +376,7 @@ def train_predictor_model(
         num_classes=num_classes,
         **hyperparameters,
     )
+
     train_info = model.fit(
         train_data=train_data,
         valid_data=valid_data,

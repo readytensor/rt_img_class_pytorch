@@ -63,7 +63,7 @@ class MNASNet(ImageClassifier):
         early_stopping_patience: int = 10,
         early_stopping_delta: float = 0.05,
         lr_scheduler: str = None,
-        lr_scheduler_kwargs: dict = None,
+        lr_scheduler_kwargs: dict = {},
         **kwargs,
     ):
         self.model_name = model_name
