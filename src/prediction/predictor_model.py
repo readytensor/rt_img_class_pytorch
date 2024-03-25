@@ -159,6 +159,7 @@ class ImageClassifier:
             patience=self.early_stopping_patience,
             delta=self.early_stopping_delta,
         )
+        results = {}
         loss_history = {}
         log_train_loss = self.log_losses == "train" or self.log_losses == "both"
         log_val_loss = (
@@ -171,27 +172,27 @@ class ImageClassifier:
             loss_history["validation_loss"] = []
 
         for epoch in range(self.max_epochs):
-
+            self.model.train()
             self.forward_backward(train_data)
 
             monitored_loss = None
             if log_train_loss:
                 train_p_results = self.predict(train_data, self.loss_function)
-                train_predictions = train_p_results["predictions"]
-                train_probs = train_p_results["probabilities"]
                 train_loss = train_p_results["loss"]
                 logger.info(f"Train loss for epoch {epoch+1}: {train_loss:.3f}")
                 loss_history["train_loss"].append(train_loss)
                 monitored_loss = train_loss
+                results["train_predictions"] = train_p_results["predictions"]
+                results["train_probabilities"] = train_p_results["probabilities"]
 
             if log_val_loss:
                 val_p_results = self.predict(valid_data, self.loss_function)
-                val_predictions = val_p_results["predictions"]
-                val_probs = val_p_results["probabilities"]
                 val_loss = val_p_results["loss"]
                 logger.info(f"Validation loss for epoch {epoch+1}: {val_loss:.3f}")
                 loss_history["validation_loss"].append(val_loss)
                 monitored_loss = val_loss
+                results["validation_predictions"] = val_p_results["predictions"]
+                results["validation_probabilities"] = val_p_results["probabilities"]
 
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step(monitored_loss)
@@ -205,15 +206,7 @@ class ImageClassifier:
                     logger.info(f"Early stopping after {epoch+1} epochs")
                     break
 
-        results = {"loss_history": pd.DataFrame(loss_history)}
-
-        if log_train_loss:
-            results["train_predictions"] = train_predictions
-            results["train_probabilities"] = train_probs
-
-        if log_val_loss:
-            results["validation_predictions"] = val_predictions
-            results["validation_probabilities"] = val_probs
+        results["loss_history"] = pd.DataFrame(loss_history)
         return results
 
     def predict(self, data: DataLoader, loss_function=None) -> Dict:
