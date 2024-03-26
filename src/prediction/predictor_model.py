@@ -184,12 +184,6 @@ class ImageClassifier:
                 monitored_loss = train_loss
                 results["train_predictions"] = train_p_results["predictions"]
                 results["train_ids"] = train_p_results["ids"]
-                pd.DataFrame(train_p_results["predictions"]).to_csv(
-                    os.path.join(
-                        paths.MODEL_ARTIFACTS_PATH, f"train_predictions_{epoch}.csv"
-                    ),
-                    index=False,
-                )
                 results["train_probabilities"] = train_p_results["probabilities"]
 
             if log_val_loss:
@@ -200,12 +194,6 @@ class ImageClassifier:
                 monitored_loss = val_loss
                 results["validation_predictions"] = val_p_results["predictions"]
                 results["validation_ids"] = val_p_results["ids"]
-                pd.DataFrame(val_p_results["predictions"]).to_csv(
-                    os.path.join(
-                        paths.MODEL_ARTIFACTS_PATH, f"val_predictions_{epoch}.csv"
-                    ),
-                    index=False,
-                )
                 results["validation_probabilities"] = val_p_results["probabilities"]
 
             if self.lr_scheduler is not None:
