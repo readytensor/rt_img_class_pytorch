@@ -3,7 +3,7 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 
 import torch
 from torch.optim import Optimizer
@@ -130,6 +130,14 @@ class ImageClassifier:
             self.lr_scheduler = None
 
     def forward_backward(self, data: DataLoader) -> None:
+        """
+        Perform forward and backward passes on the given data.
+
+        Args:
+        - data (DataLoader): The input data.
+
+        - Returns: None
+        """
         self.model.train()
         train_progress_bar = tqdm(
             total=len(data),
@@ -153,7 +161,16 @@ class ImageClassifier:
         self,
         train_data: DataLoader,
         valid_data: DataLoader = None,
-    ) -> Dict:
+    ) -> Dict[str, Any]:
+        """
+        Fit the model to the training data.
+
+        Args:
+        - train_data (DataLoader): The training data.
+        - valid_data (DataLoader): The validation data.
+
+        Returns: (Dict[str, Any])
+        """
         last_lr = self.lr
         self.model.to(device)
         early_stopper = EarlyStopping(
@@ -216,7 +233,8 @@ class ImageClassifier:
         Predicts the class labels and probabilities for the given data.
 
         Args:
-            data (DataLoader): The input data.
+            - data (DataLoader): The input data.
+            - loss_function (Callable): The loss function to use for calculating the loss. Default is None.
 
         Returns:
             Dict: A dictionary containing the predicted class labels, probabilities and optionally the loss.
