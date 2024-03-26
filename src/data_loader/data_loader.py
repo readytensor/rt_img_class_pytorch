@@ -10,6 +10,17 @@ from torchvision import transforms
 from data_loader.base_loader import AbstractDataLoaderFactory
 
 
+class CustomImageFolder(ImageFolder):
+    def __getitem__(self, index):
+        # Call the parent class's __getitem__ to retrieve image and label
+        original_tuple = super(CustomImageFolder, self).__getitem__(index)
+        # Retrieve the path from self.imgs, which stores tuples of (path, class_index)
+        path, _ = self.imgs[index]
+        # Return a tuple with the filename, image, and label
+        # Ensure path is a string, as expected by Path
+        return (Path(path).name, *original_tuple)
+
+
 class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
     def __init__(
         self,
@@ -55,7 +66,7 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
             created.
         """
 
-        dataset = ImageFolder(root=train_dir_path, transform=self.transform)
+        dataset = CustomImageFolder(root=train_dir_path, transform=self.transform)
         self.class_to_idx = dataset.class_to_idx
         self.num_classes = len(dataset.classes)
         self.class_names = dataset.classes
@@ -64,7 +75,7 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
 
         # if validation data is given to us directly then load it
         if validation_dir_path is not None:
-            validation_dataset = ImageFolder(
+            validation_dataset = CustomImageFolder(
                 root=validation_dir_path, transform=self.transform
             )
             val_loader = DataLoader(
@@ -153,7 +164,7 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
         Returns:
             A DataLoader for test data.
         """
-        test_dataset = ImageFolder(root=data_dir_path, transform=self.transform)
+        test_dataset = CustomImageFolder(root=data_dir_path, transform=self.transform)
         test_loader = DataLoader(
             test_dataset,
             batch_size=self.batch_size,

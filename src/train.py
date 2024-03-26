@@ -104,7 +104,7 @@ def run_training(
 
         if history.get("train_predictions", None) is not None:
             train_predictions = create_predictions_dataframe(
-                ids=data_loader_factory.train_image_names,
+                ids=history["train_ids"],
                 probs=history["train_probabilities"],
                 predictions=history["train_predictions"],
                 class_to_idx=data_loader_factory.class_to_idx,
@@ -120,7 +120,7 @@ def run_training(
 
         if history.get("validation_predictions", None) is not None:
             validation_predictions = create_predictions_dataframe(
-                ids=data_loader_factory.val_image_names,
+                ids=history["validation_ids"],
                 probs=history["validation_probabilities"],
                 predictions=history["validation_predictions"],
                 class_to_idx=data_loader_factory.class_to_idx,

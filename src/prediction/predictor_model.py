@@ -135,7 +135,7 @@ class ImageClassifier:
             total=len(data),
             desc="Epoch progress",
         )
-        for inputs, labels in data:
+        for _, inputs, labels in data:
             inputs, labels = inputs.to(device), labels.to(device)
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -183,6 +183,7 @@ class ImageClassifier:
                 loss_history["train_loss"].append(train_loss)
                 monitored_loss = train_loss
                 results["train_predictions"] = train_p_results["predictions"]
+                results["train_ids"] = train_p_results["ids"]
                 pd.DataFrame(train_p_results["predictions"]).to_csv(
                     os.path.join(
                         paths.MODEL_ARTIFACTS_PATH, f"train_predictions_{epoch}.csv"
@@ -198,6 +199,7 @@ class ImageClassifier:
                 loss_history["validation_loss"].append(val_loss)
                 monitored_loss = val_loss
                 results["validation_predictions"] = val_p_results["predictions"]
+                results["validation_ids"] = val_p_results["ids"]
                 pd.DataFrame(val_p_results["predictions"]).to_csv(
                     os.path.join(
                         paths.MODEL_ARTIFACTS_PATH, f"val_predictions_{epoch}.csv"
@@ -235,13 +237,14 @@ class ImageClassifier:
         self.model.to(device)
         loss_total = 0
         with torch.no_grad():
-            all_labels, all_predicted, all_probs = (
+            all_labels, all_predicted, all_probs, ids = (
+                np.array([]),
                 np.array([]),
                 np.array([]),
                 np.array([]),
             )
 
-            for inputs, labels in data:
+            for id, inputs, labels in data:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = self.model(inputs)
                 probs = F.softmax(outputs, dim=1)
@@ -255,11 +258,12 @@ class ImageClassifier:
                     if all_probs.size
                     else probs.cpu().numpy()
                 )
+                ids = np.append(ids, id)
                 if loss_function is not None:
                     loss = loss_function(outputs, labels)
                     loss_total += loss.item()
 
-        results = {"predictions": all_predicted, "probabilities": all_probs}
+        results = {"predictions": all_predicted, "probabilities": all_probs, "ids": ids}
         if loss_function is not None:
             results["loss"] = loss_total / len(data)
 
