@@ -22,6 +22,7 @@ from torch.optim.lr_scheduler import (
 from torch_utils.lr_scheduler import WarmupCosineAnnealing
 from logger import get_logger
 from tqdm import tqdm
+from config import paths
 
 
 warnings.filterwarnings("ignore")
@@ -183,6 +184,12 @@ class ImageClassifier:
                 loss_history["train_loss"].append(train_loss)
                 monitored_loss = train_loss
                 results["train_predictions"] = train_p_results["predictions"]
+                pd.DataFrame(train_p_results["predictions"]).to_csv(
+                    os.path.join(
+                        paths.MODEL_ARTIFACTS_PATH, f"train_predictions_{epoch}.csv"
+                    ),
+                    index=False,
+                )
                 results["train_probabilities"] = train_p_results["probabilities"]
 
             if log_val_loss:
