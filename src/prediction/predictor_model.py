@@ -173,7 +173,6 @@ class ImageClassifier:
             loss_history["validation_loss"] = []
 
         for epoch in range(self.max_epochs):
-            self.model.train()
             self.forward_backward(train_data)
 
             monitored_loss = None
@@ -199,6 +198,12 @@ class ImageClassifier:
                 loss_history["validation_loss"].append(val_loss)
                 monitored_loss = val_loss
                 results["validation_predictions"] = val_p_results["predictions"]
+                pd.DataFrame(val_p_results["predictions"]).to_csv(
+                    os.path.join(
+                        paths.MODEL_ARTIFACTS_PATH, f"val_predictions_{epoch}.csv"
+                    ),
+                    index=False,
+                )
                 results["validation_probabilities"] = val_p_results["probabilities"]
 
             if self.lr_scheduler is not None:
