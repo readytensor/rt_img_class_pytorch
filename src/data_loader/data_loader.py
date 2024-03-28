@@ -10,6 +10,17 @@ from torchvision import transforms
 from data_loader.base_loader import AbstractDataLoaderFactory
 
 
+class CustomImageFolder(ImageFolder):
+    def __getitem__(self, index):
+        # Call the parent class's __getitem__ to retrieve image and label
+        original_tuple = super(CustomImageFolder, self).__getitem__(index)
+        # Retrieve the path from self.imgs, which stores tuples of (path, class_index)
+        path, _ = self.imgs[index]
+        # Return a tuple with the filename, image, and label
+        # Ensure path is a string, as expected by Path
+        return (Path(path).name, *original_tuple)
+
+
 class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
     def __init__(
         self,
@@ -55,14 +66,16 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
             created.
         """
 
-        dataset = ImageFolder(root=train_dir_path, transform=self.transform)
+        dataset = CustomImageFolder(root=train_dir_path, transform=self.transform)
         self.class_to_idx = dataset.class_to_idx
         self.num_classes = len(dataset.classes)
         self.class_names = dataset.classes
 
+        idx_to_class = {v: k for k, v in self.class_to_idx.items()}
+
         # if validation data is given to us directly then load it
         if validation_dir_path is not None:
-            validation_dataset = ImageFolder(
+            validation_dataset = CustomImageFolder(
                 root=validation_dir_path, transform=self.transform
             )
             val_loader = DataLoader(
@@ -81,6 +94,7 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
             self.val_image_names = [Path(i[0]).name for i in validation_dataset.imgs]
             self.train_image_labels = [i[1] for i in dataset.imgs]
             self.val_image_labels = [i[1] for i in validation_dataset.imgs]
+
         else:
             if self.validation_size > 0:
                 # Create validation split out of train split
@@ -134,6 +148,10 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
                 self.val_image_names = None
                 self.train_image_labels = [i[1] for i in dataset.imgs]
                 self.val_image_labels = None
+
+        self.train_image_labels = [idx_to_class[i] for i in self.train_image_labels]
+        if self.val_image_labels is not None:
+            self.val_image_labels = [idx_to_class[i] for i in self.val_image_labels]
         return train_loader, val_loader
 
     def create_test_data_loader(self, data_dir_path: str):
@@ -146,7 +164,7 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
         Returns:
             A DataLoader for test data.
         """
-        test_dataset = ImageFolder(root=data_dir_path, transform=self.transform)
+        test_dataset = CustomImageFolder(root=data_dir_path, transform=self.transform)
         test_loader = DataLoader(
             test_dataset,
             batch_size=self.batch_size,
@@ -181,6 +199,10 @@ def get_data_loader(model_name: str) -> PyTorchDataLoaderFactory:
         "mnasnet1_0",
         "mnasnet1_3",
         "mnasnet0_5",
+        "vgg11",
+        "vgg13",
+        "vgg16",
+        "vgg19",
     }
     inception = {"inceptionV3"}
     supported = ordinary | inception
