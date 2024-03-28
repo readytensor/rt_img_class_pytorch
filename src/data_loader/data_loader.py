@@ -199,6 +199,10 @@ def get_data_loader(model_name: str) -> PyTorchDataLoaderFactory:
         "mnasnet1_0",
         "mnasnet1_3",
         "mnasnet0_5",
+        "vgg11",
+        "vgg13",
+        "vgg16",
+        "vgg19",
     }
     inception = {"inceptionV3"}
     supported = ordinary | inception

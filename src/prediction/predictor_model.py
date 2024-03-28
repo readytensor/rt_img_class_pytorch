@@ -22,7 +22,6 @@ from torch.optim.lr_scheduler import (
 from torch_utils.lr_scheduler import WarmupCosineAnnealing
 from logger import get_logger
 from tqdm import tqdm
-from config import paths
 
 
 warnings.filterwarnings("ignore")
@@ -337,6 +336,11 @@ class ImageClassifier:
 
             return MNASNet.load(params, model_state)
 
+        if model_name.startswith("vgg"):
+            from models.vgg import VGG
+
+            return VGG.load(params, model_state)
+
     def evaluate(self, test_data: DataLoader):
         """Evaluate the model and return the loss"""
         return self.predict(data_loader=test_data, loss_function=self.loss_function)[
@@ -383,6 +387,11 @@ def train_predictor_model(
         from models.mnasnet import MNASNet
 
         constructor = MNASNet
+
+    elif model_name.startswith("vgg"):
+        from models.vgg import VGG
+
+        constructor = VGG
 
     model = constructor(
         model_name=model_name,
