@@ -269,6 +269,7 @@ class OrdinaryDataLoader(PyTorchDataLoaderFactory):
         shuffle_train=True,
         num_workers: int = 0,
         random_state: int = 42,
+        **kwargs,
     ):
         super().__init__(
             batch_size=batch_size,
@@ -277,6 +278,7 @@ class OrdinaryDataLoader(PyTorchDataLoaderFactory):
             validation_size=validation_size,
             shuffle_train=shuffle_train,
             random_state=random_state,
+            **kwargs,
         )
 
 
@@ -297,6 +299,7 @@ class InceptionV3DataLoader(PyTorchDataLoaderFactory):
         shuffle_train=True,
         num_workers: int = 0,
         random_state: int = 42,
+        **kwargs,
     ):
         super().__init__(
             batch_size=batch_size,
@@ -305,4 +308,5 @@ class InceptionV3DataLoader(PyTorchDataLoaderFactory):
             validation_size=validation_size,
             shuffle_train=shuffle_train,
             random_state=random_state,
+            **kwargs,
         )
