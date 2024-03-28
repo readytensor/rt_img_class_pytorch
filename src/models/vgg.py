@@ -4,16 +4,14 @@ from torch.nn import Linear, Sequential
 from collections import OrderedDict
 
 from torchvision.models import (
-    ResNet18_Weights,
-    resnet18,
-    ResNet34_Weights,
-    resnet34,
-    ResNet50_Weights,
-    resnet50,
-    ResNet101_Weights,
-    resnet101,
-    ResNet152_Weights,
-    resnet152,
+    VGG11_Weights,
+    vgg11,
+    VGG13_Weights,
+    vgg13,
+    VGG16_Weights,
+    vgg16,
+    VGG19_Weights,
+    vgg19,
 )
 
 
@@ -21,11 +19,11 @@ def get_model(
     model_name: str, num_classes: int, pretrained=True, dropout: float = 0.0
 ) -> torch.nn.Module:
     """
-    Retrieves a specified ResNet model by name, optionally loading it with pretrained weights,
+    Retrieves a specified VGG model by name, optionally loading it with pretrained weights,
     and adjusts its fully connected layer to match the specified number of output classes.
 
     Args:
-    - model_name (str): Name of the ResNet model to retrieve ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152').
+    - model_name (str): Name of the ResNet model to retrieve ('vgg11', 'vgg13', 'vgg16', 'vgg19').
     - num_classes (int): Number of classes for the new fully connected layer.
     - pretrained (bool, optional): Whether to load the model with pretrained weights. Defaults to True.
     - dropout (float, optional): Dropout rate for the fully connected layer. Defaults to 0.0.
@@ -37,20 +35,19 @@ def get_model(
     - ValueError: If an unsupported model name is provided.
     """
     models = {
-        "resnet18": (ResNet18_Weights, resnet18),
-        "resnet34": (ResNet34_Weights, resnet34),
-        "resnet50": (ResNet50_Weights, resnet50),
-        "resnet101": (ResNet101_Weights, resnet101),
-        "resnet152": (ResNet152_Weights, resnet152),
+        "vgg11": (VGG11_Weights.DEFAULT, vgg11),
+        "vgg13": (VGG13_Weights.DEFAULT, vgg13),
+        "vgg16": (VGG16_Weights.DEFAULT, vgg16),
+        "vgg19": (VGG19_Weights.DEFAULT, vgg19),
     }
 
     if model_name in models.keys():
         weights = models[model_name][0]
         model = models[model_name][1]
         model = model(weights=weights) if pretrained else model(pretrained=False)
-        in_features = model.fc.in_features
+        in_features = model.classifier[6].in_features
 
-        model.fc = Sequential(
+        model.classifier[6] = Sequential(
             torch.nn.Dropout(dropout),
             Linear(in_features, num_classes),
         )
@@ -58,7 +55,7 @@ def get_model(
     raise ValueError(f"Invalid model name. Supported models {models.keys()}")
 
 
-class ResNet(ImageClassifier):
+class VGG(ImageClassifier):
     def __init__(
         self,
         model_name: str,
@@ -95,7 +92,7 @@ class ResNet(ImageClassifier):
         )
 
     @classmethod
-    def load(cls, params: dict, model_state: OrderedDict) -> "ResNet":
+    def load(cls, params: dict, model_state: OrderedDict) -> "VGG":
         """
         Loads a pretrained model and its training configuration from a specified path.
 
@@ -103,7 +100,7 @@ class ResNet(ImageClassifier):
         - predictor_dir_path (str): Path to the directory with model's parameters and state.
 
         Returns:
-        - ResNet: A trainer object with the loaded model and training configuration.
+        - VGG: A trainer object with the loaded model and training configuration.
         """
         model_name = params["model_name"]
         num_classes = params["num_classes"]
@@ -117,6 +114,6 @@ class ResNet(ImageClassifier):
 
         model.load_state_dict(model_state)
 
-        trainer = ResNet(**params)
+        trainer = VGG(**params)
         trainer.model = model
         return trainer
