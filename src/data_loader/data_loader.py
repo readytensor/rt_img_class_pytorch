@@ -47,12 +47,22 @@ class PyTorchDataLoaderFactory(AbstractDataLoaderFactory):
         """
         Custom collate function to handle optional on-the-fly data augmentation.
         """
+        augmentation_transforms = transforms.Compose(
+            [
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomVerticalFlip(p=0.5),
+                transforms.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
+                ),
+                transforms.RandomRotation(degrees=(0, 360)),
+            ]
+        )
         augmented_batch = []
         for path, image, label in batch:
             augmented_batch.append((path, image, label))  # Original image
-            if self.augmentation_transforms:
+            if self.augmentation:
                 # Apply augmentation and append
-                augmented_image = self.augmentation(image)
+                augmented_image = augmentation_transforms(image)
                 augmented_batch.append((path, augmented_image, label))
         # Unzip the batch items
         paths, images, labels = zip(*augmented_batch)
