@@ -3,7 +3,7 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 
 import torch
 from torch.optim import Optimizer
@@ -129,12 +129,20 @@ class ImageClassifier:
             self.lr_scheduler = None
 
     def forward_backward(self, data: DataLoader) -> None:
+        """
+        Perform forward and backward passes on the given data.
+
+        Args:
+        - data (DataLoader): The input data.
+
+        - Returns: None
+        """
         self.model.train()
         train_progress_bar = tqdm(
             total=len(data),
             desc="Epoch progress",
         )
-        for inputs, labels in data:
+        for _, inputs, labels in data:
             inputs, labels = inputs.to(device), labels.to(device)
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -152,7 +160,16 @@ class ImageClassifier:
         self,
         train_data: DataLoader,
         valid_data: DataLoader = None,
-    ) -> Dict:
+    ) -> Dict[str, Any]:
+        """
+        Fit the model to the training data.
+
+        Args:
+        - train_data (DataLoader): The training data.
+        - valid_data (DataLoader): The validation data.
+
+        Returns: (Dict[str, Any])
+        """
         last_lr = self.lr
         self.model.to(device)
         early_stopper = EarlyStopping(
@@ -172,7 +189,6 @@ class ImageClassifier:
             loss_history["validation_loss"] = []
 
         for epoch in range(self.max_epochs):
-            self.model.train()
             self.forward_backward(train_data)
 
             monitored_loss = None
@@ -183,6 +199,7 @@ class ImageClassifier:
                 loss_history["train_loss"].append(train_loss)
                 monitored_loss = train_loss
                 results["train_predictions"] = train_p_results["predictions"]
+                results["train_ids"] = train_p_results["ids"]
                 results["train_probabilities"] = train_p_results["probabilities"]
 
             if log_val_loss:
@@ -192,6 +209,7 @@ class ImageClassifier:
                 loss_history["validation_loss"].append(val_loss)
                 monitored_loss = val_loss
                 results["validation_predictions"] = val_p_results["predictions"]
+                results["validation_ids"] = val_p_results["ids"]
                 results["validation_probabilities"] = val_p_results["probabilities"]
 
             if self.lr_scheduler is not None:
@@ -214,7 +232,8 @@ class ImageClassifier:
         Predicts the class labels and probabilities for the given data.
 
         Args:
-            data (DataLoader): The input data.
+            - data (DataLoader): The input data.
+            - loss_function (Callable): The loss function to use for calculating the loss. Default is None.
 
         Returns:
             Dict: A dictionary containing the predicted class labels, probabilities and optionally the loss.
@@ -223,13 +242,14 @@ class ImageClassifier:
         self.model.to(device)
         loss_total = 0
         with torch.no_grad():
-            all_labels, all_predicted, all_probs = (
+            all_labels, all_predicted, all_probs, ids = (
+                np.array([]),
                 np.array([]),
                 np.array([]),
                 np.array([]),
             )
 
-            for inputs, labels in data:
+            for id, inputs, labels in data:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = self.model(inputs)
                 probs = F.softmax(outputs, dim=1)
@@ -243,11 +263,12 @@ class ImageClassifier:
                     if all_probs.size
                     else probs.cpu().numpy()
                 )
+                ids = np.append(ids, id)
                 if loss_function is not None:
                     loss = loss_function(outputs, labels)
                     loss_total += loss.item()
 
-        results = {"predictions": all_predicted, "probabilities": all_probs}
+        results = {"predictions": all_predicted, "probabilities": all_probs, "ids": ids}
         if loss_function is not None:
             results["loss"] = loss_total / len(data)
 
@@ -315,6 +336,11 @@ class ImageClassifier:
 
             return MNASNet.load(params, model_state)
 
+        if model_name.startswith("vgg"):
+            from models.vgg import VGG
+
+            return VGG.load(params, model_state)
+
     def evaluate(self, test_data: DataLoader):
         """Evaluate the model and return the loss"""
         return self.predict(data_loader=test_data, loss_function=self.loss_function)[
@@ -361,6 +387,11 @@ def train_predictor_model(
         from models.mnasnet import MNASNet
 
         constructor = MNASNet
+
+    elif model_name.startswith("vgg"):
+        from models.vgg import VGG
+
+        constructor = VGG
 
     model = constructor(
         model_name=model_name,
