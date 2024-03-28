@@ -222,7 +222,11 @@ def save_json(file_path_and_name: str, data: Any) -> None:
 
 
 def create_predictions_dataframe(
-    ids: np.ndarray, probs: np.ndarray, predictions: np.ndarray, class_to_idx: dict
+    ids: np.ndarray,
+    probs: np.ndarray,
+    predictions: np.ndarray,
+    class_to_idx: dict,
+    truth_labels: List[Tuple[str, Any]] = None,
 ) -> pd.DataFrame:
     """
     Creates a DataFrame containing predictions and their associated probabilities for each class.
@@ -232,6 +236,7 @@ def create_predictions_dataframe(
     - probs (np.ndarray): A 2D array where each row contains the probabilities for each class for a given sample.
     - predictions (np.ndarray): An array of class indices predicted for each sample.
     - class_to_idx (dict): A dictionary mapping class names to their respective indices.
+    - truth_labels (List[str], optional): A list of true class labels for each sample. Defaults to None.
 
     Returns:
     - pd.DataFrame: A DataFrame with the following columns:
@@ -246,6 +251,10 @@ def create_predictions_dataframe(
     prediction_df["prediction"] = predictions
     prediction_df["prediction"] = prediction_df["prediction"].map(idx_to_class)
     prediction_df.rename(columns=idx_to_class, inplace=True)
+
+    if truth_labels is not None:
+        labels_df = pd.DataFrame(truth_labels, columns=["id", "label"])
+        prediction_df = pd.merge(prediction_df, labels_df, on="id", how="inner")
     return prediction_df
 
 
