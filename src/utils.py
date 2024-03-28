@@ -6,7 +6,7 @@ import psutil
 import threading
 import numpy as np
 import pandas as pd
-import torch as T
+import torch
 from typing import Any, Dict, List, Tuple, Union
 
 
@@ -122,11 +122,11 @@ def set_seeds(seed_value: int) -> None:
         os.environ["PYTHONHASHSEED"] = str(seed_value)
         random.seed(seed_value)
         np.random.seed(seed_value)
-        T.manual_seed(seed_value)
-        T.cuda.manual_seed(seed_value)
-        T.cuda.manual_seed_all(seed_value)  # For multi-GPU setups
-        T.backends.cudnn.deterministic = True
-        T.backends.cudnn.benchmark = False
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value)  # For multi-GPU setups
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
     else:
         raise ValueError(f"Invalid seed value: {seed_value}. Cannot set seeds.")
 
@@ -221,6 +221,43 @@ def save_json(file_path_and_name: str, data: Any) -> None:
         )
 
 
+def create_predictions_dataframe(
+    ids: np.ndarray,
+    probs: np.ndarray,
+    predictions: np.ndarray,
+    class_to_idx: dict,
+    truth_labels: List[Tuple[str, Any]] = None,
+) -> pd.DataFrame:
+    """
+    Creates a DataFrame containing predictions and their associated probabilities for each class.
+
+    Args:
+    - ids (np.ndarray): An array of identifiers for the samples.
+    - probs (np.ndarray): A 2D array where each row contains the probabilities for each class for a given sample.
+    - predictions (np.ndarray): An array of class indices predicted for each sample.
+    - class_to_idx (dict): A dictionary mapping class names to their respective indices.
+    - truth_labels (List[str], optional): A list of true class labels for each sample. Defaults to None.
+
+    Returns:
+    - pd.DataFrame: A DataFrame with the following columns:
+        - 'id': The identifier for each sample.
+        - One column for each class, containing the probability of that class for each sample. The columns are named after the class names.
+        - 'prediction': The predicted class name for each sample.
+    """
+    idx_to_class = {k: v for v, k in class_to_idx.items()}
+    encoded_targets = list(range(len(class_to_idx)))
+    prediction_df = pd.DataFrame({"id": ids})
+    prediction_df[encoded_targets] = probs
+    prediction_df["prediction"] = predictions
+    prediction_df["prediction"] = prediction_df["prediction"].map(idx_to_class)
+    prediction_df.rename(columns=idx_to_class, inplace=True)
+
+    if truth_labels is not None:
+        labels_df = pd.DataFrame(truth_labels, columns=["id", "label"])
+        prediction_df = pd.merge(prediction_df, labels_df, on="id", how="inner")
+    return prediction_df
+
+
 def make_serializable(obj: Any) -> Union[int, float, List[Union[int, float]], Any]:
     """
     Converts a given object into a serializable format.
@@ -259,43 +296,12 @@ def get_peak_memory_usage() -> float:
     """
     Returns the peak memory usage by current cuda device (in MB) if available
     """
-    if not T.cuda.is_available():
+    if not torch.cuda.is_available():
         return None
 
-    current_device = T.cuda.current_device()
-    peak_memory = T.cuda.max_memory_allocated(current_device)
+    current_device = torch.cuda.current_device()
+    peak_memory = torch.cuda.max_memory_allocated(current_device)
     return peak_memory / (1024 * 1024)
-
-
-class ResourceTracker(object):
-    """
-    This class serves as a context manager to track time and
-    memory allocated by code executed inside it.
-    """
-
-    def __init__(self, logger, monitoring_interval):
-        self.logger = logger
-        self.monitor = MemoryMonitor(logger=logger, interval=monitoring_interval)
-
-    def __enter__(self):
-        self.start_time = time.time()
-        if T.cuda.is_available():
-            T.cuda.reset_peak_memory_stats()  # Reset CUDA memory stats
-            T.cuda.empty_cache()  # Clear CUDA cache
-
-        self.monitor.start()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.end_time = time.time()
-        self.monitor.stop()
-        cuda_peak = get_peak_memory_usage()
-        if cuda_peak is not None:
-            self.logger.info(f"CUDA Memory allocated (peak): {cuda_peak:.2f} MB")
-
-        elapsed_time = self.end_time - self.start_time
-
-        self.logger.info(f"Execution time: {elapsed_time:.2f} seconds")
 
 
 class MemoryMonitor:
@@ -349,3 +355,34 @@ class MemoryMonitor:
     def get_peak_memory(cls):
         """Returns the peak memory usage"""
         return cls.peak_memory
+
+
+class ResourceTracker(object):
+    """
+    This class serves as a context manager to track time and
+    memory allocated by code executed inside it.
+    """
+
+    def __init__(self, logger, monitoring_interval):
+        self.logger = logger
+        self.monitor = MemoryMonitor(logger=logger, interval=monitoring_interval)
+
+    def __enter__(self):
+        self.start_time = time.time()
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()  # Reset CUDA memory stats
+            torch.cuda.empty_cache()  # Clear CUDA cache
+
+        self.monitor.start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_time = time.time()
+        self.monitor.stop()
+        cuda_peak = get_peak_memory_usage()
+        if cuda_peak:
+            self.logger.info(f"CUDA Memory allocated (peak): {cuda_peak:.2f} MB")
+
+        elapsed_time = self.end_time - self.start_time
+
+        self.logger.info(f"Execution time: {elapsed_time:.2f} seconds")
