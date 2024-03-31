@@ -1,5 +1,5 @@
 {
-  "model_name": "resnet18",
+  "model_name": "vgg13",
   "seed_value": 42,
   "prediction_field_name": "prediction"
 }
