@@ -7,7 +7,7 @@ from typing import Tuple, Dict, Any
 
 import torch
 from torch.optim import Optimizer
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss, MultiMarginLoss
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
@@ -31,6 +31,19 @@ logger = get_logger(task_name="model")
 # Check for GPU availability
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 logger.info(f"Using device: {device}")
+
+
+def get_loss_function(loss: str) -> torch.nn.Module:
+    supported_losses = {
+        "cross_entropy": CrossEntropyLoss,
+        "multi_margin": MultiMarginLoss,
+    }
+
+    if loss not in supported_losses.keys():
+        raise ValueError(
+            f"{loss} is not a supported loss function. Supported: {supported_losses}"
+        )
+    return supported_losses[loss]
 
 
 def get_optimizer(optimizer: str) -> Optimizer:
@@ -74,6 +87,7 @@ class ImageClassifier:
         optimizer: str = "adam",
         max_epochs: int = 10,
         log_losses: str = "valid",
+        loss_function: str = "cross_entropy",
         early_stopping: bool = False,
         early_stopping_patience: int = 10,
         early_stopping_delta: float = 0.05,
@@ -91,6 +105,7 @@ class ImageClassifier:
         - optimizer (str): Name of the optimizer to use for training. Default is "adam". supported optimizers: {"adam", "sgd"}
         - max_epochs (int): Maximum number of training epochs. Default is 10.
         - log_losses (str): Whether to log the losses. Default is "valid". supported values: {"train", "valid", "both"}. can be set to None.
+        - loss_function (str): Name of the loss function to use. Default is "cross_entropy". supported losses: {"cross_entropy", "multi_margin"}
         setting this parameter to None will disable early stopping.
         - early_stopping (bool): Whether to enable early stopping. Default is False.
         - early_stopping_patience (int): Number of epochs with no improvement after which training will be stopped. Default is 10.
@@ -114,8 +129,9 @@ class ImageClassifier:
         self.early_stopping_patience = early_stopping_patience
         self.lr_scheduler_str = lr_scheduler
         self.lr_scheduler_kwargs = lr_scheduler_kwargs
-        self.loss_function = CrossEntropyLoss()
         self.kwargs = kwargs
+
+        self.loss_function = get_loss_function(loss_function)()
 
         self.optimizer = get_optimizer(optimizer)(
             self.model.parameters(), lr=lr, **optimizer_kwargs
