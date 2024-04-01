@@ -6,6 +6,7 @@
   "early_stopping": true,
   "early_stopping_patience": 4,
   "early_stopping_delta": 0.05,
+  "loss_function": "cross_entropy",
   "lr_scheduler": "warmup_cosine_annealing",
   "log_losses": "both",
   "lr_scheduler_kwargs": {
